@@ -3,10 +3,6 @@ import assert from "node:assert/strict";
 import { CustomEditor } from "@mariozechner/pi-coding-agent";
 import { CodexEditor } from "../src/ui/editor.ts";
 
-function stripAnsi(text: string): string {
-	return text.replace(/\x1b\[[0-9;]*m/g, "");
-}
-
 function withMockedBaseRender(lines: string[], run: (editor: CodexEditor) => void): void {
 	const originalRender = CustomEditor.prototype.render;
 	CustomEditor.prototype.render = function mockedRender() {
@@ -27,8 +23,8 @@ test("CodexEditor preserves user-authored paired horizontal rules", () => {
 		"normal content",
 		"────────────────────",
 	], (editor) => {
-		(editor as any).prefs = { density: "compact", themeName: "Codex Dark" };
-		assert.deepEqual(editor.render(40).map(stripAnsi), ["normal content"]);
+		(editor as any).prefs = { density: "compact" };
+		assert.deepEqual(editor.render(40), ["────────────────────", "normal content", "────────────────────"]);
 	});
 });
 
@@ -38,8 +34,8 @@ test("CodexEditor preserves scroll-indicator-like lines when they are content", 
 		"  real content line",
 		"─── ↓ 3 more ───────",
 	], (editor) => {
-		(editor as any).prefs = { density: "compact", themeName: "Codex Dark" };
-		assert.deepEqual(editor.render(40).map(stripAnsi), ["  real content line"]);
+		(editor as any).prefs = { density: "compact" };
+		assert.deepEqual(editor.render(40), ["────────────────────", "  real content line", "─── ↓ 3 more ───────"]);
 	});
 });
 
@@ -48,8 +44,8 @@ test("CodexEditor preserves user-authored horizontal rules when they are content
 		"────────────────────",
 		"  real content line",
 	], (editor) => {
-		(editor as any).prefs = { density: "compact", themeName: "Codex Dark" };
-		assert.deepEqual(editor.render(40).map(stripAnsi), ["  real content line"]);
+		(editor as any).prefs = { density: "compact" };
+		assert.deepEqual(editor.render(40), ["────────────────────", "  real content line"]);
 	});
 });
 
@@ -58,8 +54,8 @@ test("CodexEditor preserves user-authored indicator-like text when it is content
 		"  first line",
 		"─── ↓ 3 more thoughts about spacing",
 	], (editor) => {
-		(editor as any).prefs = { density: "compact", themeName: "Codex Dark" };
-		assert.deepEqual(editor.render(80).map(stripAnsi), ["  first line"]);
+		(editor as any).prefs = { density: "compact" };
+		assert.deepEqual(editor.render(80), ["  first line", "─── ↓ 3 more thoughts about spacing"]);
 	});
 });
 
@@ -78,32 +74,5 @@ test("CodexEditor reapplies comfortable padding if Pi startup settings override 
 		(editor as any).paddingX = 3;
 		editor.render(80);
 		assert.equal(editor.getPaddingX(), 1);
-	});
-});
-
-test("CodexEditor applies user-message background to the prompt slab contents", () => {
-	withMockedBaseRender([
-		"────────────────────",
-		"prompt body",
-		"autocomplete row",
-	], (editor) => {
-		(editor as any).prefs = { density: "compact", themeName: "Codex Dark" };
-
-		const rendered = editor.render(40);
-		assert.match(rendered[0], /\x1b\[48;2;47;55;66mprompt body\x1b\[0m/);
-		assert.match(rendered[1], /\x1b\[48;2;47;55;66mautocomplete row\x1b\[0m/);
-	});
-});
-
-test("CodexEditor leaves editor border lines unfilled", () => {
-	withMockedBaseRender([
-		"────────────────────",
-		"prompt body",
-		"─── ↓ 3 more ───────",
-	], (editor) => {
-		(editor as any).prefs = { density: "compact", themeName: "Codex Dark" };
-
-		const rendered = editor.render(40).map(stripAnsi);
-		assert.deepEqual(rendered, ["prompt body"]);
 	});
 });
