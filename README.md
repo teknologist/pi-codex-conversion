@@ -4,7 +4,7 @@ Codex-oriented adapter for [Pi](https://github.com/badlogic/pi-mono).
 
 This package replaces Pi's default Codex/GPT experience with a narrower Codex-like surface while staying close to Pi's own runtime and prompt construction:
 
-- swaps active tools to `exec_command`, `write_stdin`, `apply_patch`, `view_image`, and native OpenAI Codex Responses `web_search` on `openai-codex`
+- swaps active tools to `exec_command`, `write_stdin`, `apply_patch`, `view_image`, and native OpenAI Codex Responses `codex_web_search` on `openai-codex`
 - preserves Pi's composed system prompt and applies a narrow Codex-oriented delta on top
 - renders exec activity with Codex-style command and background-terminal labels
 - renders `apply_patch` calls with Codex-style `Added` / `Edited` / `Deleted` diff blocks and Pi-style colored diff lines
@@ -22,7 +22,7 @@ When the adapter is active, the LLM sees these tools:
 - `write_stdin` — continue or poll a running exec session
 - `apply_patch` — patch tool
 - `view_image` — image-only wrapper around Pi's native image reading, enabled only for image-capable models
-- `web_search` — native OpenAI Codex Responses web search, enabled only on the `openai-codex` provider
+- `codex_web_search` — native OpenAI Codex Responses web search, enabled only on the `openai-codex` provider
 
 Notably:
 
@@ -59,7 +59,7 @@ npm run check
 - `write_stdin({ session_id, chars: "" })` renders like `Waited for background terminal` and is meant for occasional polling, not tight repoll loops
 - `write_stdin({ session_id, chars: "y\\n" })` renders like `Interacted with background terminal`
 - `view_image({ path: "/absolute/path/to/screenshot.png" })` is available on image-capable models
-- `web_search` is surfaced only on `openai-codex`, and the adapter rewrites it into the native OpenAI Responses `type: "web_search"` payload instead of executing a local function tool
+- `codex_web_search` is surfaced only on `openai-codex`, and the adapter rewrites it into the native OpenAI Responses `type: "web_search"` payload instead of executing a local function tool
 - when native web search is available, the adapter shows a one-time session notice; individual searches are not surfaced because Pi does not expose native web-search execution events to extensions
 - `apply_patch` partial failures stay inline in the patch row so successful and failed file entries can be seen together
 
@@ -136,7 +136,7 @@ That keeps the prompt much closer to `pi-mono` while still steering the model to
 - Adapter mode activates automatically for OpenAI `gpt*` and `codex*` models.
 - When you switch away from those models, Pi restores the previous active tool set.
 - `view_image` resolves paths against the active session cwd and only exposes `detail: "original"` for Codex-family image-capable models.
-- `web_search` is exposed only for the `openai-codex` provider and is forwarded as the native OpenAI Codex Responses web search tool.
+- `codex_web_search` is exposed only for the `openai-codex` provider and is forwarded as the native OpenAI Codex Responses web search tool.
 - `apply_patch` paths stay restricted to the current working directory.
 - partial `apply_patch` failures stay in the original patch block and highlight the failed entry instead of adding a second warning row.
 - `exec_command` / `write_stdin` use a custom PTY-backed session manager via `node-pty` for interactive sessions.

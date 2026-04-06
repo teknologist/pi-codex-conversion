@@ -3,9 +3,10 @@ import { Type } from "@sinclair/typebox";
 import { Box, Container, Text } from "@mariozechner/pi-tui";
 import { isOpenAICodexModel } from "../adapter/codex-model.ts";
 
-export const WEB_SEARCH_UNSUPPORTED_MESSAGE = "web_search is only available with the openai-codex provider";
+export const WEB_SEARCH_TOOL_NAME = "codex_web_search";
+export const WEB_SEARCH_UNSUPPORTED_MESSAGE = `${WEB_SEARCH_TOOL_NAME} is only available with the openai-codex provider`;
 const WEB_SEARCH_LOCAL_EXECUTION_MESSAGE =
-	"web_search is a native openai-codex provider tool and should not execute locally";
+	`${WEB_SEARCH_TOOL_NAME} is a native openai-codex provider tool and should not execute locally`;
 export const WEB_SEARCH_SESSION_NOTE_TYPE = "codex-web-search-session-note";
 export const WEB_SEARCH_SESSION_NOTE_TEXT =
 	"Native OpenAI Codex web search is enabled for this session. Search runs silently and is not surfaced as a separate tool call.";
@@ -53,7 +54,7 @@ export function supportsMultimodalNativeWebSearch(model: ExtensionContext["model
 }
 
 function isWebSearchFunctionTool(tool: unknown): tool is FunctionToolPayload {
-	return !!tool && typeof tool === "object" && (tool as FunctionToolPayload).type === "function" && (tool as FunctionToolPayload).name === "web_search";
+	return !!tool && typeof tool === "object" && (tool as FunctionToolPayload).type === "function" && (tool as FunctionToolPayload).name === WEB_SEARCH_TOOL_NAME;
 }
 
 function createEmptyResultComponent(): Container {
@@ -99,8 +100,8 @@ export function rewriteNativeWebSearchTool(payload: unknown, model: ExtensionCon
 
 export function createWebSearchTool(): ToolDefinition<typeof WEB_SEARCH_PARAMETERS> {
 	return {
-		name: "web_search",
-		label: "web_search",
+		name: WEB_SEARCH_TOOL_NAME,
+		label: WEB_SEARCH_TOOL_NAME,
 		description:
 			"Search the web for sources relevant to the current task. Use it when you need up-to-date information, external references, or broader context beyond the workspace.",
 		promptSnippet:
@@ -113,7 +114,7 @@ export function createWebSearchTool(): ToolDefinition<typeof WEB_SEARCH_PARAMETE
 			throw new Error(WEB_SEARCH_LOCAL_EXECUTION_MESSAGE);
 		},
 		renderCall(_args, theme) {
-			return new Text(`${theme.fg("toolTitle", theme.bold("web_search"))}`, 0, 0);
+			return new Text(`${theme.fg("toolTitle", theme.bold(WEB_SEARCH_TOOL_NAME))}`, 0, 0);
 		},
 		renderResult(result, { expanded }, theme) {
 			if (!expanded) {

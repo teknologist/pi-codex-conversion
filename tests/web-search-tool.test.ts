@@ -19,7 +19,7 @@ test("rewriteNativeWebSearchTool replaces the adapter function tool with the nat
 		model: "gpt-5.4",
 		tools: [
 			{ type: "function", name: "exec_command", parameters: { type: "object" } },
-			{ type: "function", name: "web_search", parameters: { type: "object" } },
+			{ type: "function", name: "codex_web_search", parameters: { type: "object" } },
 		],
 	};
 
@@ -38,7 +38,7 @@ test("rewriteNativeWebSearchTool replaces the adapter function tool with the nat
 test("rewriteNativeWebSearchTool leaves spark models text-only", () => {
 	const payload = {
 		model: "gpt-5.3-codex-spark",
-		tools: [{ type: "function", name: "web_search", parameters: { type: "object" } }],
+		tools: [{ type: "function", name: "codex_web_search", parameters: { type: "object" } }],
 	};
 
 	assert.deepEqual(
@@ -56,7 +56,7 @@ test("rewriteNativeWebSearchTool leaves spark models text-only", () => {
 test("rewriteNativeWebSearchTool leaves other providers untouched", () => {
 	const payload = {
 		model: "gpt-5",
-		tools: [{ type: "function", name: "web_search", parameters: { type: "object" } }],
+		tools: [{ type: "function", name: "codex_web_search", parameters: { type: "object" } }],
 	};
 
 	assert.equal(
@@ -136,6 +136,7 @@ test("createWebSearchTool renderResult returns an empty component when collapsed
 			fg: (_role: string, text: string) => text,
 			bold: (text: string) => text,
 		} as never,
+		undefined as never,
 	);
 
 	assert.ok(component);
