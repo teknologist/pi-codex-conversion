@@ -76,3 +76,22 @@ test("CodexEditor reapplies comfortable padding if Pi startup settings override 
 		assert.equal(editor.getPaddingX(), 1);
 	});
 });
+
+test("CodexEditor applies user-message background to the prompt slab contents", () => {
+	withMockedBaseRender([
+		"────────────────────",
+		"prompt body",
+		"autocomplete row",
+	], (editor) => {
+		(editor as any).prefs = { density: "compact" };
+		(editor as any).theme = {
+			bg: (role: string, text: string) => `[${role}]${text}`,
+		};
+
+		assert.deepEqual(editor.render(40), [
+			"────────────────────",
+			"[userMessageBg]prompt body",
+			"[userMessageBg]autocomplete row",
+		]);
+	});
+});
