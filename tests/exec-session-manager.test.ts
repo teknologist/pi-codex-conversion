@@ -2,6 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createExecSessionManager, type UnifiedExecResult } from "../src/tools/exec-session-manager.ts";
 
+function skipIfPtyUnavailable(context: { skip: (message?: string) => void }, error: unknown): never {
+	if (error instanceof Error && /posix_spawnp failed/i.test(error.message)) {
+		context.skip("PTY unavailable in current environment");
+	}
+	throw error;
+}
+
 function createFastTestExecSessionManager() {
 	return createExecSessionManager({ minNonInteractiveExecYieldTimeMs: 50, minEmptyWriteYieldTimeMs: 50, maxSessionBufferChars: 4096 });
 }
@@ -19,10 +26,12 @@ async function finishSession(
 	return { output, final: result };
 }
 
-test("exec session manager supports long-running commands via write_stdin", async () => {
+test("exec session manager supports long-running commands via write_stdin", async (t) => {
 	const sessions = createFastTestExecSessionManager();
 	try {
-		const started = await sessions.exec(
+		let started;
+		try {
+			started = await sessions.exec(
 			{
 				cmd: "printf ready && read line && printf ':%s' \"$line\"",
 				shell: "/bin/bash",
@@ -31,7 +40,10 @@ test("exec session manager supports long-running commands via write_stdin", asyn
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 
 		assert.equal(started.output, "ready");
 		assert.equal(typeof started.session_id, "number");
@@ -152,10 +164,12 @@ test("exec session manager preserves fish-derived PATH and SHELL when forcing ba
 	}
 });
 
-test("write_stdin returns completed when interactive input causes a quick exit", async () => {
+test("write_stdin returns completed when interactive input causes a quick exit", async (t) => {
 	const sessions = createFastTestExecSessionManager();
 	try {
-		const started = await sessions.exec(
+		let started;
+		try {
+			started = await sessions.exec(
 			{
 				cmd: "read line && printf ':%s' \"$line\"",
 				shell: "/bin/bash",
@@ -164,7 +178,10 @@ test("write_stdin returns completed when interactive input causes a quick exit",
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 
 		assert.equal(typeof started.session_id, "number");
 
@@ -204,11 +221,13 @@ test("non-tty exec_command calls clamp tiny waits to the configured minimum", as
 	}
 });
 
-test("tty exec_command calls stay responsive and do not use the non-interactive minimum", async () => {
+test("tty exec_command calls stay responsive and do not use the non-interactive minimum", async (t) => {
 	const sessions = createExecSessionManager({ minNonInteractiveExecYieldTimeMs: 500, minEmptyWriteYieldTimeMs: 50 });
 	try {
 		const start = Date.now();
-		const result = await sessions.exec(
+		let result;
+		try {
+			result = await sessions.exec(
 			{
 				cmd: "printf ready && read line",
 				shell: "/bin/bash",
@@ -217,7 +236,10 @@ test("tty exec_command calls stay responsive and do not use the non-interactive 
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 		const elapsed = Date.now() - start;
 
 		assert.ok(elapsed < 450, `expected interactive exec to stay responsive, got ${elapsed}ms`);
@@ -257,10 +279,12 @@ test("empty write_stdin polls are clamped to the configured minimum", async () =
 	}
 });
 
-test("non-empty write_stdin calls stay responsive and do not use the empty-poll minimum", async () => {
+test("non-empty write_stdin calls stay responsive and do not use the empty-poll minimum", async (t) => {
 	const sessions = createExecSessionManager({ minNonInteractiveExecYieldTimeMs: 50, minEmptyWriteYieldTimeMs: 500 });
 	try {
-		const started = await sessions.exec(
+		let started;
+		try {
+			started = await sessions.exec(
 			{
 				cmd: "read line && sleep 0.1 && printf ':%s' \"$line\"",
 				shell: "/bin/bash",
@@ -269,7 +293,10 @@ test("non-empty write_stdin calls stay responsive and do not use the empty-poll 
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 
 		assert.equal(typeof started.session_id, "number");
 
@@ -347,10 +374,12 @@ test("exec session manager caps buffered output to the configured maximum", asyn
 	}
 });
 
-test("exec session manager strips terminal control noise from PTY output", async () => {
+test("exec session manager strips terminal control noise from PTY output", async (t) => {
 	const sessions = createFastTestExecSessionManager();
 	try {
-		let result = await sessions.exec(
+		let result;
+		try {
+			result = await sessions.exec(
 			{
 				cmd: "printf '\\033]11;rgb:0000/0000/0000\\007\\033[?2004hready\\001'",
 				shell: "/bin/bash",
@@ -359,7 +388,10 @@ test("exec session manager strips terminal control noise from PTY output", async
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 
 		let output = result.output;
 		for (let attempt = 0; attempt < 5 && result.session_id !== undefined; attempt++) {
@@ -375,10 +407,12 @@ test("exec session manager strips terminal control noise from PTY output", async
 	}
 });
 
-test("exec session manager strips non-CSI escape sequences from PTY output", async () => {
+test("exec session manager strips non-CSI escape sequences from PTY output", async (t) => {
 	const sessions = createFastTestExecSessionManager();
 	try {
-		let result = await sessions.exec(
+		let result;
+		try {
+			result = await sessions.exec(
 			{
 				cmd: "printf '\\033(Bok\\n'",
 				shell: "/bin/bash",
@@ -387,7 +421,10 @@ test("exec session manager strips non-CSI escape sequences from PTY output", asy
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 
 		let output = result.output;
 		for (let attempt = 0; attempt < 5 && result.session_id !== undefined; attempt++) {
@@ -403,10 +440,12 @@ test("exec session manager strips non-CSI escape sequences from PTY output", asy
 	}
 });
 
-test("exec session manager applies basic PTY cursor semantics for carriage returns and backspaces", async () => {
+test("exec session manager applies basic PTY cursor semantics for carriage returns and backspaces", async (t) => {
 	const sessions = createFastTestExecSessionManager();
 	try {
-		let result = await sessions.exec(
+		let result;
+		try {
+			result = await sessions.exec(
 			{
 				cmd: "printf 'foo\\rbar\\nabc\\b\\bde\\n'",
 				shell: "/bin/bash",
@@ -415,7 +454,10 @@ test("exec session manager applies basic PTY cursor semantics for carriage retur
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 
 		let output = result.output;
 		for (let attempt = 0; attempt < 5 && result.session_id !== undefined; attempt++) {
@@ -431,10 +473,12 @@ test("exec session manager applies basic PTY cursor semantics for carriage retur
 	}
 });
 
-test("exec session manager replays PTY line rewrites correctly across multiple polls", async () => {
+test("exec session manager replays PTY line rewrites correctly across multiple polls", async (t) => {
 	const sessions = createFastTestExecSessionManager();
 	try {
-		let result = await sessions.exec(
+		let result;
+		try {
+			result = await sessions.exec(
 			{
 				cmd: "printf foo; sleep 0.3; printf '\\r\\033[Kbar'; sleep 0.3; printf '\\n'",
 				shell: "/bin/bash",
@@ -443,7 +487,10 @@ test("exec session manager replays PTY line rewrites correctly across multiple p
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 
 		let replay = result.output;
 		for (let attempt = 0; attempt < 8 && result.session_id !== undefined; attempt++) {

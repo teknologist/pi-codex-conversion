@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { Container, Text } from "@mariozechner/pi-tui";
-import { renderWriteStdinCall } from "./codex-rendering.ts";
+import { renderExecResultMeta, renderWriteStdinCall } from "./codex-rendering.ts";
 import type { ExecSessionManager, UnifiedExecResult } from "./exec-session-manager.ts";
 import { formatUnifiedExecResult } from "./unified-exec-format.ts";
 
@@ -140,13 +140,9 @@ export function registerWriteStdinTool(pi: ExtensionAPI, sessions: ExecSessionMa
 			if (isPartial || !expanded) return createEmptyResultComponent();
 			const state = getResultState(result);
 			const output = renderTerminalText(state.output);
-			let text = theme.fg("dim", output || "(no output)");
-			if (state.sessionId !== undefined) {
-				text += `\n${theme.fg("accent", `Session ${state.sessionId} still running`)}`;
-			}
-			if (state.exitCode !== undefined) {
-				text += `\n${theme.fg("muted", `Exit code: ${state.exitCode}`)}`;
-			}
+			const lines = [theme.fg("dim", output || "(no output)")];
+			lines.push(...renderExecResultMeta({ sessionId: state.sessionId, exitCode: state.exitCode }, theme));
+			const text = lines.join("\n");
 			return new Text(text, 0, 0);
 		},
 	});

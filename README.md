@@ -2,6 +2,9 @@
 
 Codex-oriented adapter for [Pi](https://github.com/badlogic/pi-mono).
 
+> [!NOTE]
+> This project was inspired by and builds on two earlier efforts: the original [`pi-codex-conversion`](https://github.com/IgorWarzocha/pi-codex-conversion) repository by Igor Warzocha, and [`pi-dex`](https://www.npmjs.com/package/pi-dex), which explored a similar goal of making Pi feel more like Codex. Credit and thanks to both original authors for the ideas and groundwork behind this repository.
+
 This package replaces Pi's default Codex/GPT experience with a narrower Codex-like surface while staying close to Pi's own runtime and prompt construction:
 
 - swaps active tools to `exec_command`, `write_stdin`, `apply_patch`, `view_image`, and native OpenAI Codex Responses `codex_web_search` on `openai-codex`

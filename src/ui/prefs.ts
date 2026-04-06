@@ -16,9 +16,9 @@ export const DEFAULT_CODEX_UI_PREFS: CodexUiPrefs = {
 	themeName: "Codex Dark",
 	density: "compact",
 	forceTheme: true,
-	showHeader: true,
+	showHeader: false,
 	compactTools: true,
-	promptPrefix: true,
+	promptPrefix: false,
 };
 
 type MaybeCustomEntry = {

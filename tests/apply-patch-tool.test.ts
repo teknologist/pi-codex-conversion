@@ -85,7 +85,7 @@ test("apply_patch renderCall preserves deleted previews after execution removes 
 			getTool().renderCall?.({ input: patch }, theme, { toolCallId: "call-delete", expanded: true }),
 		);
 
-		assert.match(rendered, /Deleted delete-me\.txt \(\+0 -2\)/);
+		assert.match(rendered, /delete-me\.txt \(\+0 -2\)/);
 		assert.match(rendered, /-first/);
 		assert.match(rendered, /-second/);
 	} finally {
@@ -107,7 +107,7 @@ test("apply_patch renderCall falls back to the patching placeholder while patch 
 		),
 	);
 
-	assert.equal(rendered, "• Patching");
+	assert.equal(rendered, "applying patch");
 });
 
 test("apply_patch renderCall shows edit failed after a non-partial patch failure", async () => {
@@ -129,7 +129,7 @@ test("apply_patch renderCall shows edit failed after a non-partial patch failure
 		await assert.rejects(() => execute("call-failed-patch", { input: patch }, undefined, undefined, { cwd }));
 
 		const rendered = renderComponentText(renderCall({ input: patch }, theme, { toolCallId: "call-failed-patch", expanded: false, cwd }));
-		assert.equal(rendered, "• Edit failed");
+		assert.equal(rendered, "edit failed");
 	} finally {
 		clearApplyPatchRenderState();
 		await rm(cwd, { recursive: true, force: true });
@@ -181,9 +181,9 @@ test("apply_patch renderCall shows partial failure inline after some hunks alrea
 			renderCall({ input: patch }, theme, { toolCallId: "call-partial-failure", expanded: true }),
 		);
 
-		assert.match(collapsed, /^• Edit partially failed 2 files \(\+2 -1\)/);
+		assert.match(collapsed, /^2 files \(\+2 -1\) \(incomplete\)/);
 		assert.match(collapsed, /missing\.txt failed \(\+1 -1\)/);
-		assert.match(expanded, /^• Edit partially failed 2 files \(\+2 -1\)/);
+		assert.match(expanded, /^2 files \(\+2 -1\) \(incomplete\)/);
 		assert.match(expanded, /created\.txt \(\+1 -0\)/);
 		assert.match(expanded, /missing\.txt failed \(\+1 -1\)/);
 	} finally {
@@ -224,7 +224,7 @@ test("apply_patch renderCall marks failed absolute-path entries inline using dis
 			renderCall({ input: patch }, theme, { toolCallId: "call-absolute-partial-failure", expanded: false, cwd }),
 		);
 
-		assert.match(collapsed, /^• Edit partially failed 2 files \(\+2 -1\)/);
+		assert.match(collapsed, /^2 files \(\+2 -1\) \(incomplete\)/);
 		assert.match(collapsed, /missing\.txt failed \(\+1 -1\)/);
 	} finally {
 		clearApplyPatchRenderState();
@@ -344,7 +344,7 @@ test("apply_patch renderCall marks single-file partial failures after warning st
 			renderCall({ input: patch }, theme, { toolCallId: "call-single-file-partial-failure", expanded: false, cwd }),
 		);
 
-		assert.match(collapsed, /^• Edit partially failed source\.txt → moved\/source\.txt failed \(\+1 -1\)/);
+		assert.match(collapsed, /^source\.txt → moved\/source\.txt \(\+1 -1\) \(incomplete\)/);
 	} finally {
 		clearApplyPatchRenderState();
 		await rm(cwd, { recursive: true, force: true });

@@ -102,9 +102,9 @@ function renderPartialFailureCall(
 ): string {
 	const lines = text.split("\n");
 	if (lines.length === 0) {
-		return theme.fg("warning", "• Edit partially failed");
+		return theme.fg("muted", "edit incomplete");
 	}
-	lines[0] = lines[0].replace(/^• (Added|Edited|Deleted)\b/, "• Edit partially failed");
+	lines[0] = `${lines[0]} ${theme.fg("muted", "(incomplete)")}`;
 	const failedLineIndexes = new Set<number>();
 	if (failedTarget) {
 		for (let i = 0; i < lines.length; i += 1) {
@@ -118,10 +118,7 @@ function renderPartialFailureCall(
 	return lines
 		.map((line, index) => {
 			if (failedLineIndexes.has(index)) {
-				return theme.fg("error", line);
-			}
-			if (index === 0) {
-				return theme.fg("warning", line);
+				return theme.fg("muted", line);
 			}
 			return line;
 		})
@@ -135,9 +132,9 @@ function renderFailedCall(
 ): string {
 	const lines = text.split("\n");
 	if (lines.length === 0) {
-		return theme.fg("error", "• Edit failed");
+		return theme.fg("muted", "edit failed");
 	}
-	lines[0] = lines[0].replace(/^• (Added|Edited|Deleted)\b/, "• Edit failed");
+	lines[0] = `${lines[0]} ${theme.fg("muted", "(failed)")}`;
 	const failedLineIndexes = new Set<number>();
 	if (failedTarget) {
 		for (let i = 0; i < lines.length; i += 1) {
@@ -150,8 +147,8 @@ function renderFailedCall(
 	}
 	return lines
 		.map((line, index) => {
-			if (failedLineIndexes.has(index) || index === 0) {
-				return theme.fg("error", line);
+			if (failedLineIndexes.has(index)) {
+				return theme.fg("muted", line);
 			}
 			return line;
 		})
@@ -165,7 +162,7 @@ function markFailedTargetLine(line: string, failedTarget: string): string | unde
 	}
 	const suffix = suffixMatch[0];
 	const prefixAndTarget = line.slice(0, -suffix.length);
-	const candidatePrefixes = ["• Edit partially failed ", "• Added ", "• Edited ", "• Deleted ", "  └ ", "    "];
+	const candidatePrefixes = ["  ", "    "];
 	for (const prefix of candidatePrefixes) {
 		if (prefixAndTarget === `${prefix}${failedTarget}`) {
 			return `${prefix}${failedTarget} failed${suffix}`;
@@ -221,11 +218,11 @@ const renderApplyPatchCallWithOptionalContext: any = (
 	context?: ApplyPatchRenderContextLike,
 ) => {
 	if (context?.argsComplete === false) {
-		return new Text(`${theme.fg("dim", "•")} ${theme.bold("Patching")}`, 0, 0);
+		return new Text(theme.fg("dim", "applying patch"), 0, 0);
 	}
 	const patchText = typeof args.input === "string" ? args.input : "";
 	if (patchText.trim().length === 0) {
-		return new Text(`${theme.fg("dim", "•")} ${theme.bold("Patching")}`, 0, 0);
+		return new Text(theme.fg("dim", "applying patch"), 0, 0);
 	}
 	const cached = context?.toolCallId ? applyPatchRenderStates.get(context.toolCallId) : undefined;
 	const cwd = context?.cwd ?? cached?.cwd;
@@ -235,9 +232,9 @@ const renderApplyPatchCallWithOptionalContext: any = (
 		: cached?.collapsed ?? formatApplyPatchSummary(effectivePatchText, cwd);
 	if (baseText.trim().length === 0) {
 		if (cached?.status === "failed") {
-			return new Text(theme.fg("error", "• Edit failed"), 0, 0);
+			return new Text(theme.fg("muted", "edit failed"), 0, 0);
 		}
-		return new Text(`${theme.fg("dim", "•")} ${theme.bold("Patching")}`, 0, 0);
+		return new Text(theme.fg("dim", "applying patch"), 0, 0);
 	}
 	const text =
 		cached?.status === "partial_failure"
@@ -324,7 +321,7 @@ export function registerApplyPatchTool(pi: ExtensionAPI): void {
 		renderCall: renderApplyPatchCallWithOptionalContext,
 		renderResult(result, { isPartial, expanded }, theme) {
 			if (isPartial) {
-				return new Text(`${theme.fg("dim", "•")} ${theme.bold("Patching")}`, 0, 0);
+				return new Text(theme.fg("dim", "applying patch"), 0, 0);
 			}
 
 			if (!isApplyPatchToolDetails(result.details)) {

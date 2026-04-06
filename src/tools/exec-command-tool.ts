@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { Container, Text } from "@mariozechner/pi-tui";
-import { renderExecCommandCall, renderGroupedExecCommandCall } from "./codex-rendering.ts";
+import { renderExecCommandCall, renderExecResultMeta, renderGroupedExecCommandCall } from "./codex-rendering.ts";
 import type { ExecCommandTracker } from "./exec-command-state.ts";
 import type { ExecSessionManager, UnifiedExecResult } from "./exec-session-manager.ts";
 import { formatUnifiedExecResult } from "./unified-exec-format.ts";
@@ -102,13 +102,9 @@ const renderExecCommandResultWithOptionalContext: any = (
 	const details = isUnifiedExecResult(result.details) ? result.details : undefined;
 	const content = result.content.find((item) => item.type === "text");
 	const output = details?.output ?? (content?.type === "text" ? content.text : "");
-	let text = theme.fg("dim", output || "(no output)");
-	if (details?.session_id !== undefined) {
-		text += `\n${theme.fg("accent", `Session ${details.session_id} still running`)}`;
-	}
-	if (details?.exit_code !== undefined) {
-		text += `\n${theme.fg("muted", `Exit code: ${details.exit_code}`)}`;
-	}
+	const lines = [theme.fg("dim", output || "(no output)")];
+	lines.push(...renderExecResultMeta({ sessionId: details?.session_id, exitCode: details?.exit_code }, theme));
+	const text = lines.join("\n");
 	return new Text(text, 0, 0);
 };
 

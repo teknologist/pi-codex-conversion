@@ -22,37 +22,46 @@ export function renderWriteStdinCall(
 	theme: RenderTheme,
 ): string {
 	const interacted = typeof input === "string" && input.length > 0;
-	const marker = interacted ? "↳ " : "• ";
-	const title = interacted ? "Interacted with background terminal" : "Waited for background terminal";
-	let text = `${theme.fg("dim", marker)}${theme.bold(title)}`;
-	const commandPreview = formatCommandPreview(command);
-	if (commandPreview) {
-		text += `${theme.fg("dim", " · ")}${theme.fg("muted", commandPreview)}`;
-	}
-	// Keep the session fallback only when we do not have a stable command display.
-	if (!commandPreview) {
-		text += `${theme.fg("dim", " ")}${theme.fg("muted", `#${sessionId}`)}`;
-	}
-	return text;
+	const commandLabel = formatTerminalCommand(command, sessionId);
+	const status = interacted ? "sent input" : "waiting";
+	return `${commandLabel}\n${theme.fg("dim", status)}${theme.fg("dim", " · background")}`;
 }
 
 function renderExplorationText(actionGroups: ShellAction[][], state: ExecCommandStatus, theme: RenderTheme): string {
-	const header = state === "running" ? "Exploring" : "Explored";
-	let text = `${theme.fg("dim", "•")} ${theme.bold(header)}`;
+	const lines = coalesceReadGroups(actionGroups).map(formatActionLine);
+	if (lines.length === 0) {
+		return renderCommandText("", state, theme);
+	}
 
-	for (const [index, line] of coalesceReadGroups(actionGroups).map(formatActionLine).entries()) {
-		const prefix = index === 0 ? "  └ " : "    ";
-		text += `\n${theme.fg("dim", prefix)}${theme.fg("accent", line.title)} ${theme.fg("muted", line.body)}`;
+	const [first, ...rest] = lines;
+	let text = `${theme.bold(first.body)}`;
+	text += `\n${theme.fg("dim", state === "running" ? `${first.title.toLowerCase()} · running` : first.title.toLowerCase())}`;
+
+	for (const line of rest) {
+		text += `\n${theme.fg("dim", "  ")}${theme.fg("muted", `${line.title.toLowerCase()} ${line.body}`)}`;
 	}
 
 	return text;
 }
 
 function renderCommandText(command: string, state: ExecCommandStatus, theme: RenderTheme): string {
-	const verb = state === "running" ? "Running" : "Ran";
-	let text = `${theme.fg("dim", "•")} ${theme.bold(verb)}`;
-	text += `\n${theme.fg("dim", "  └ ")}${theme.fg("accent", shortenCommand(command))}`;
-	return text;
+	const commandLabel = formatTerminalCommand(command || undefined);
+	const status = state === "running" ? "running" : "done";
+	return `${commandLabel}\n${theme.fg("dim", status)}`;
+}
+
+export function renderExecResultMeta(
+	info: { sessionId?: number; exitCode?: number },
+	theme: Pick<RenderTheme, "fg">,
+): string[] {
+	const lines: string[] = [];
+	if (info.sessionId !== undefined) {
+		lines.push(theme.fg("dim", `running in background · session ${info.sessionId}`));
+	}
+	if (info.exitCode !== undefined) {
+		lines.push(theme.fg("muted", `exit ${info.exitCode}`));
+	}
+	return lines;
 }
 
 function shortenCommand(command: string, max = 100): string {
@@ -66,6 +75,14 @@ function formatCommandPreview(command: string | undefined): string | undefined {
 	const singleLine = command.replace(/\s+/g, " ").trim();
 	if (singleLine.length === 0) return undefined;
 	return shortenCommand(singleLine, 80);
+}
+
+function formatTerminalCommand(command: string | undefined, sessionId?: number | string): string {
+	const preview = formatCommandPreview(command);
+	if (preview) {
+		return `$ ${preview}`;
+	}
+	return `${sessionId === undefined ? "$" : `#${sessionId}`} ${"background process"}`;
 }
 
 function formatActionLine(action: ShellAction): { title: string; body: string } {

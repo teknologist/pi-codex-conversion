@@ -5,6 +5,13 @@ import { createExecSessionManager } from "../src/tools/exec-session-manager.ts";
 import { formatUnifiedExecResult } from "../src/tools/unified-exec-format.ts";
 import { registerWriteStdinTool } from "../src/tools/write-stdin-tool.ts";
 
+function skipIfPtyUnavailable(context: { skip: (message?: string) => void }, error: unknown): never {
+	if (error instanceof Error && /posix_spawnp failed/i.test(error.message)) {
+		context.skip("PTY unavailable in current environment");
+	}
+	throw error;
+}
+
 function createFastTestExecSessionManager() {
 	return createExecSessionManager({ minEmptyWriteYieldTimeMs: 50 });
 }
@@ -48,14 +55,16 @@ function createRegisteredTool() {
 	};
 }
 
-test("write_stdin renderCall stays stable after the backing session exits", async () => {
+test("write_stdin renderCall stays stable after the backing session exits", async (t) => {
 	const sessions = createFastTestExecSessionManager();
 	const { pi, getTool } = createRegisteredTool();
 	registerWriteStdinTool(pi, sessions);
 	const theme = createTheme();
 
 	try {
-		const started = await sessions.exec(
+		let started;
+		try {
+			started = await sessions.exec(
 			{
 				cmd: "read line",
 				shell: "/bin/bash",
@@ -64,7 +73,10 @@ test("write_stdin renderCall stays stable after the backing session exits", asyn
 				yield_time_ms: 50,
 			},
 			process.cwd(),
-		);
+			);
+		} catch (error) {
+			skipIfPtyUnavailable(t, error);
+		}
 
 		assert.equal(typeof started.session_id, "number");
 		const args = { session_id: started.session_id!, chars: "" };
@@ -80,7 +92,7 @@ test("write_stdin renderCall stays stable after the backing session exits", asyn
 
 		const afterExit = renderComponentText(getTool().renderCall?.(args, theme));
 		assert.equal(afterExit, beforeExit);
-		assert.equal(afterExit, "• Waited for background terminal · read line");
+		assert.equal(afterExit, "$ read line\nwaiting · background");
 	} finally {
 		sessions.shutdown();
 	}
@@ -130,7 +142,7 @@ test("write_stdin renderResult falls back to the Output section of formatted tra
 			),
 		);
 
-		assert.equal(rendered, "replayed output\nExit code: 0");
+		assert.equal(rendered, "replayed output\nexit 0");
 	} finally {
 		sessions.shutdown();
 	}
@@ -162,7 +174,7 @@ test("write_stdin renderResult falls back to running-session state from formatte
 			),
 		);
 
-		assert.equal(rendered, "ready\nSession 7 still running");
+		assert.equal(rendered, "ready\nrunning in background · session 7");
 	} finally {
 		sessions.shutdown();
 	}

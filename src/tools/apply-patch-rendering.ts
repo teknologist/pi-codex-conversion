@@ -38,13 +38,14 @@ export function formatApplyPatchSummary(patchText: string, cwd = process.cwd()):
 
 	if (files.length === 1) {
 		const [file] = files;
-		lines.push(`${bulletHeader(file.verb, formatPatchTarget(file.path, file.movePath, cwd))} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`  ${file.verb.toLowerCase()}`);
 		return lines.join("\n");
 	}
 
-	lines.push(`${bulletHeader("Edited", `${files.length} files`)} ${renderCounts(totalAdded, totalRemoved)}`);
-	for (const [index, file] of files.entries()) {
-		const prefix = index === 0 ? "  └ " : "    ";
+	lines.push(`${files.length} files ${renderCounts(totalAdded, totalRemoved)}`);
+	for (const file of files) {
+		const prefix = "  ";
 		lines.push(`${prefix}${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
 	}
 
@@ -70,17 +71,19 @@ export function formatApplyPatchCall(patchText: string, cwd = process.cwd()): st
 
 	if (files.length === 1) {
 		const [file] = files;
-		lines.push(`${bulletHeader(file.verb, formatPatchTarget(file.path, file.movePath, cwd))} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`  ${file.verb.toLowerCase()}`);
 		lines.push(...file.lines.map((line) => formatPreviewLine(line, file.lines)));
 		return lines.join("\n");
 	}
 
-	lines.push(`${bulletHeader("Edited", `${files.length} files`)} ${renderCounts(totalAdded, totalRemoved)}`);
+	lines.push(`${files.length} files ${renderCounts(totalAdded, totalRemoved)}`);
 	for (const [index, file] of files.entries()) {
 		if (index > 0) {
-			lines.push("");
+			lines.push(themeSeparator());
 		}
-		lines.push(`  └ ${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`  ${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`    ${file.verb.toLowerCase()}`);
 		lines.push(...file.lines.map((line) => formatPreviewLine(line, file.lines)));
 	}
 
@@ -106,17 +109,19 @@ export function renderApplyPatchCall(patchText: string, cwd = process.cwd()): st
 
 	if (files.length === 1) {
 		const [file] = files;
-		lines.push(`${bulletHeader(file.verb, formatPatchTarget(file.path, file.movePath, cwd))} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`  ${file.verb.toLowerCase()}`);
 		lines.push(...renderPreviewLines(file.lines));
 		return lines.join("\n");
 	}
 
-	lines.push(`${bulletHeader("Edited", `${files.length} files`)} ${renderCounts(totalAdded, totalRemoved)}`);
+	lines.push(`${files.length} files ${renderCounts(totalAdded, totalRemoved)}`);
 	for (const [index, file] of files.entries()) {
 		if (index > 0) {
-			lines.push("");
+			lines.push(themeSeparator());
 		}
-		lines.push(`  └ ${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`  ${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
+		lines.push(`    ${file.verb.toLowerCase()}`);
 		lines.push(...renderPreviewLines(file.lines));
 	}
 
@@ -249,10 +254,14 @@ function renderPreviewLines(lines: PreviewLine[]): string[] {
 	try {
 		return renderDiff(diffText)
 			.split("\n")
-			.map((line) => `    ${line}`);
+			.map((line) => `      ${line}`);
 	} catch {
 		return lines.map((line) => formatPreviewLine(line, lines));
 	}
+}
+
+function themeSeparator(): string {
+	return "  ·";
 }
 
 function normalizePatchLine(rawLine: string): PreviewLine {
@@ -341,10 +350,6 @@ function splitFileLines(text: string): string[] {
 		lines.pop();
 	}
 	return lines;
-}
-
-function bulletHeader(verb: string, label: string): string {
-	return `• ${verb} ${label}`;
 }
 
 function renderCounts(added: number, removed: number): string {

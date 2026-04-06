@@ -1,5 +1,4 @@
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { VERSION } from "@mariozechner/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { CodexEditor } from "./editor.ts";
 import type { CodexUiPrefs } from "./prefs.ts";
@@ -38,35 +37,14 @@ export function applyCodexChrome(
 			? (_tui, theme) => ({
 					invalidate() {},
 					render(width: number): string[] {
-						const boxWidth = width >= 60 ? 56 : Math.max(28, width);
 						const model = ctx.model?.id ?? "no-model";
 						const thinking = formatThinking(getThinkingLevel());
-						const border = (text: string) => theme.fg("borderAccent", text);
-						const top = border(`╭${"─".repeat(Math.max(0, boxWidth - 2))}╮`);
-						const title =
-							border("│") +
+						return [
 							fitVisible(
-								` ${theme.fg("dim", ">_")} ${theme.bold("CODEX MODE")} ${theme.fg("dim", `(pi ${VERSION})`)}`,
-								boxWidth - 2,
-							) +
-							border("│");
-						const gap = border("│") + fitVisible("", boxWidth - 2) + border("│");
-						const line2 =
-							border("│") +
-							fitVisible(
-								` ${theme.fg("dim", "model".padEnd(10))}${model} ${theme.fg("accent", "·")} ${thinking}`,
-								boxWidth - 2,
-							) +
-							border("│");
-						const line3 =
-							border("│") +
-							fitVisible(
-								` ${theme.fg("dim", "cwd".padEnd(10))}${basename(ctx.cwd)} ${theme.fg("dim", "· /codex-ui for settings")}`,
-								boxWidth - 2,
-							) +
-							border("│");
-						const bottom = border(`╰${"─".repeat(Math.max(0, boxWidth - 2))}╯`);
-						return [top, title, gap, line2, line3, bottom];
+								`${theme.fg("muted", model)} ${theme.fg("borderMuted", "·")} ${theme.fg("dim", thinking)} ${theme.fg("borderMuted", "·")} ${theme.fg("dim", basename(ctx.cwd))}`,
+								width,
+							),
+						];
 					},
 			  })
 			: undefined,
