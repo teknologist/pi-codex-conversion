@@ -28,11 +28,15 @@
   "pi": {
     "extensions": [
       "./src/index.ts"
+    ],
+    "themes": [
+      "./themes"
     ]
   },
   "files": [
     "src/**/*.ts",
     "src/**/*.md",
+    "themes/**/*.json",
     "available-tools.png",
     "README.md",
     "LICENSE"

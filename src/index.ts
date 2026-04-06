@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import { Box, Text } from "@mariozechner/pi-tui";
 import { getCodexRuntimeShell } from "./adapter/runtime-shell.ts";
 import { CORE_ADAPTER_TOOL_NAMES, DEFAULT_TOOL_NAMES, STATUS_KEY, STATUS_TEXT, VIEW_IMAGE_TOOL_NAME, WEB_SEARCH_TOOL_NAME } from "./adapter/tool-set.ts";
 import { clearApplyPatchRenderState, registerApplyPatchTool } from "./tools/apply-patch-tool.ts";
@@ -7,6 +8,9 @@ import { createExecCommandTracker } from "./tools/exec-command-state.ts";
 import { registerExecCommandTool } from "./tools/exec-command-tool.ts";
 import { createExecSessionManager } from "./tools/exec-session-manager.ts";
 import { buildCodexSystemPrompt, extractPiPromptSkills, type PromptSkill } from "./prompt/build-system-prompt.ts";
+import { applyCodexChrome, buildCodexUiInfoMessage, clearCodexChrome } from "./ui/chrome.ts";
+import { loadCodexUiPrefs, DEFAULT_CODEX_UI_PREFS, CODEX_UI_PREFS_ENTRY, isCodexTheme, type CodexDensity, type CodexThemeName, type CodexUiPrefs } from "./ui/prefs.ts";
+import { prefixUserInput, stripUserInputPrefix, shouldPrefixUserInput } from "./ui/input.ts";
 import { registerViewImageTool, supportsOriginalImageDetail } from "./tools/view-image-tool.ts";
 import {
 	registerWebSearchTool,
@@ -24,6 +28,8 @@ interface AdapterState {
 	previousToolNames?: string[];
 	promptSkills: PromptSkill[];
 	webSearchNoticeShown: boolean;
+	uiPrefs: CodexUiPrefs;
+	previousThemeNames: Map<string, string | null>;
 }
 
 const ADAPTER_TOOL_NAMES = [...CORE_ADAPTER_TOOL_NAMES, VIEW_IMAGE_TOOL_NAME, WEB_SEARCH_TOOL_NAME];
@@ -47,7 +53,13 @@ function isToolCallOnlyAssistantMessage(message: unknown): boolean {
 
 export default function codexConversion(pi: ExtensionAPI) {
 	const tracker = createExecCommandTracker();
-	const state: AdapterState = { enabled: false, promptSkills: [], webSearchNoticeShown: false };
+	const state: AdapterState = {
+		enabled: false,
+		promptSkills: [],
+		webSearchNoticeShown: false,
+		uiPrefs: { ...DEFAULT_CODEX_UI_PREFS },
+		previousThemeNames: new Map(),
+	};
 	const sessions = createExecSessionManager();
 
 	registerApplyPatchTool(pi);
@@ -55,6 +67,8 @@ export default function codexConversion(pi: ExtensionAPI) {
 	registerWriteStdinTool(pi, sessions);
 	registerWebSearchTool(pi);
 	registerWebSearchSessionNoteRenderer(pi);
+	registerCodexUiMessageRenderer(pi);
+	registerCodexUiCommands(pi, state);
 
 	sessions.onSessionExit((sessionId) => {
 		tracker.recordSessionFinished(sessionId);
@@ -62,8 +76,22 @@ export default function codexConversion(pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		state.webSearchNoticeShown = false;
+		state.uiPrefs = loadCodexUiPrefs(
+			ctx.sessionManager.getEntries() as Array<{ type?: string; customType?: string; data?: unknown }>,
+		);
+		rememberPreviousTheme(ctx, state);
 		clearApplyPatchRenderState();
 		tracker.clear();
+		syncAdapter(pi, ctx, state);
+	});
+
+	pi.on("session_switch", async (_event, ctx) => {
+		rememberPreviousTheme(ctx, state);
+		syncAdapter(pi, ctx, state);
+	});
+
+	pi.on("session_fork", async (_event, ctx) => {
+		rememberPreviousTheme(ctx, state);
 		syncAdapter(pi, ctx, state);
 	});
 
@@ -92,8 +120,9 @@ export default function codexConversion(pi: ExtensionAPI) {
 		tracker.recordEnd(event.toolCallId);
 	});
 
-	pi.on("session_shutdown", async () => {
+	pi.on("session_shutdown", async (_event, ctx) => {
 		clearApplyPatchRenderState();
+		clearCodexChrome(ctx, getPreviousThemeName(state, ctx));
 		sessions.shutdown();
 	});
 
@@ -120,8 +149,33 @@ export default function codexConversion(pi: ExtensionAPI) {
 		return {
 			messages: event.messages.filter(
 				(message) => !(message.role === "custom" && message.customType === WEB_SEARCH_SESSION_NOTE_TYPE),
-			),
+			).map((message) => {
+				if (message.role === "user" && typeof message.content === "string") {
+					return { ...message, content: stripUserInputPrefix(message.content) };
+				}
+				if (message.role === "user" && Array.isArray(message.content)) {
+					return {
+						...message,
+						content: message.content.map((item, index) =>
+							index === 0 && item.type === "text"
+								? { ...item, text: stripUserInputPrefix(item.text) }
+								: item,
+						),
+					};
+				}
+				return message;
+			}),
 		};
+	});
+
+	pi.on("input", async (event) => {
+		if (event.source === "extension") return { action: "continue" as const };
+		if (!state.enabled || !state.uiPrefs.promptPrefix || !shouldPrefixUserInput(event.text)) {
+			return { action: "continue" as const };
+		}
+		return event.images
+			? { action: "transform" as const, text: prefixUserInput(event.text), images: event.images }
+			: { action: "transform" as const, text: prefixUserInput(event.text) };
 	});
 }
 
@@ -147,6 +201,7 @@ function enableAdapter(pi: ExtensionAPI, ctx: ExtensionContext, state: AdapterSt
 		state.enabled = true;
 	}
 	pi.setActiveTools(toolNames);
+	applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
 	setStatus(ctx, true);
 }
 
@@ -159,6 +214,7 @@ function disableAdapter(pi: ExtensionAPI, ctx: ExtensionContext, state: AdapterS
 	if (state.enabled) {
 		state.enabled = false;
 	}
+	clearCodexChrome(ctx, getPreviousThemeName(state, ctx));
 	setStatus(ctx, false);
 }
 
@@ -207,4 +263,104 @@ function maybeShowWebSearchSessionNote(pi: ExtensionAPI, ctx: ExtensionContext, 
 		display: true,
 	});
 	state.webSearchNoticeShown = true;
+}
+
+function registerCodexUiMessageRenderer(pi: ExtensionAPI): void {
+	pi.registerMessageRenderer("codex-ui-info", (message, _options, theme) => {
+		const title = (message.details as { title?: string } | undefined)?.title ?? "Codex UI";
+		const box = new Box(1, 1, (text) => theme.bg("customMessageBg", text));
+		box.addChild(new Text(theme.fg("customMessageLabel", theme.bold(title)), 0, 0));
+		box.addChild(new Text(theme.fg("customMessageText", String(message.content ?? "")), 0, 0));
+		return box;
+	});
+}
+
+function sendCodexUiInfoMessage(pi: ExtensionAPI, title: string, content: string): void {
+	pi.sendMessage({ customType: "codex-ui-info", content, display: true, details: { title } });
+}
+
+function persistUiPrefs(pi: ExtensionAPI, prefs: CodexUiPrefs): void {
+	pi.appendEntry(CODEX_UI_PREFS_ENTRY, prefs);
+}
+
+function parseThemeArg(arg: string): CodexThemeName | undefined {
+	const normalized = arg.trim().toLowerCase();
+	if (normalized === "dark" || normalized === "codex-dark" || normalized === "codex dark") return "Codex Dark";
+	if (normalized === "light" || normalized === "codex-light" || normalized === "codex light") return "Codex Light";
+	return undefined;
+}
+
+function parseDensityArg(arg: string): CodexDensity | undefined {
+	const normalized = arg.trim().toLowerCase();
+	if (normalized === "compact") return "compact";
+	if (normalized === "comfortable" || normalized === "normal") return "comfortable";
+	return undefined;
+}
+
+function registerCodexUiCommands(pi: ExtensionAPI, state: AdapterState): void {
+	pi.registerCommand("codex-ui", {
+		description: "Show Codex UI status and preferences",
+		handler: async (_args, ctx) => {
+			sendCodexUiInfoMessage(pi, "Codex UI", buildCodexUiInfoMessage(ctx, state.uiPrefs));
+		},
+	});
+
+	pi.registerCommand("codex-theme", {
+		description: "Switch Codex UI theme: dark|light",
+		getArgumentCompletions: (prefix) => {
+			const values = ["dark", "light"].filter((item) => item.startsWith(prefix));
+			return values.length > 0 ? values.map((value) => ({ value, label: value })) : null;
+		},
+		handler: async (args, ctx) => {
+			const themeName = parseThemeArg(args);
+			if (!themeName) {
+				ctx.ui.notify("Usage: /codex-theme dark|light", "warning");
+				return;
+			}
+			state.uiPrefs = { ...state.uiPrefs, themeName };
+			persistUiPrefs(pi, state.uiPrefs);
+			if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+			ctx.ui.notify(`Codex theme set to ${themeName}`, "info");
+		},
+	});
+
+	pi.registerCommand("codex-density", {
+		description: "Switch Codex UI density: compact|comfortable",
+		getArgumentCompletions: (prefix) => {
+			const values = ["compact", "comfortable"].filter((item) => item.startsWith(prefix));
+			return values.length > 0 ? values.map((value) => ({ value, label: value })) : null;
+		},
+		handler: async (args, ctx) => {
+			const density = parseDensityArg(args);
+			if (!density) {
+				ctx.ui.notify("Usage: /codex-density compact|comfortable", "warning");
+				return;
+			}
+			state.uiPrefs = { ...state.uiPrefs, density };
+			persistUiPrefs(pi, state.uiPrefs);
+			if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+			ctx.ui.notify(`Codex density set to ${density}`, "info");
+		},
+	});
+
+	pi.registerCommand("codex-ui-reset", {
+		description: "Restore Codex UI defaults",
+		handler: async (_args, ctx) => {
+			state.uiPrefs = { ...DEFAULT_CODEX_UI_PREFS };
+			persistUiPrefs(pi, state.uiPrefs);
+			if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+			ctx.ui.notify("Codex UI reset to defaults", "info");
+		},
+	});
+}
+
+function rememberPreviousTheme(ctx: ExtensionContext, state: AdapterState): void {
+	const sessionId = ctx.sessionManager.getSessionId();
+	if (!state.previousThemeNames.has(sessionId) && !isCodexTheme(ctx.ui.theme.name)) {
+		state.previousThemeNames.set(sessionId, ctx.ui.theme.name ?? null);
+	}
+}
+
+function getPreviousThemeName(state: AdapterState, ctx: ExtensionContext): string | null {
+	return state.previousThemeNames.get(ctx.sessionManager.getSessionId()) ?? null;
 }
