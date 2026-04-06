@@ -17,25 +17,25 @@ function withMockedBaseRender(lines: string[], run: (editor: CodexEditor) => voi
 	}
 }
 
-test("CodexEditor strips paired top/bottom editor chrome lines", () => {
+test("CodexEditor preserves user-authored paired horizontal rules", () => {
 	withMockedBaseRender([
 		"────────────────────",
 		"normal content",
 		"────────────────────",
 	], (editor) => {
 		(editor as any).prefs = { density: "compact" };
-		assert.deepEqual(editor.render(40), ["normal content"]);
+		assert.deepEqual(editor.render(40), ["────────────────────", "normal content", "────────────────────"]);
 	});
 });
 
-test("CodexEditor preserves a user-authored top rule when the bottom line is a real scroll indicator", () => {
+test("CodexEditor preserves scroll-indicator-like lines when they are content", () => {
 	withMockedBaseRender([
 		"────────────────────",
 		"  real content line",
 		"─── ↓ 3 more ───────",
 	], (editor) => {
 		(editor as any).prefs = { density: "compact" };
-		assert.deepEqual(editor.render(40), ["────────────────────", "  real content line"]);
+		assert.deepEqual(editor.render(40), ["────────────────────", "  real content line", "─── ↓ 3 more ───────"]);
 	});
 });
 

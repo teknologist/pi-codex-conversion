@@ -27,6 +27,8 @@ type MaybeCustomEntry = {
 	data?: unknown;
 };
 
+export type CodexUiPrefsEntry = MaybeCustomEntry;
+
 export function normalizeCodexUiPrefs(input: unknown): CodexUiPrefs {
 	if (!input || typeof input !== "object") return { ...DEFAULT_CODEX_UI_PREFS };
 	const source = input as Partial<CodexUiPrefs>;
@@ -48,6 +50,10 @@ export function loadCodexUiPrefs(entries: ReadonlyArray<MaybeCustomEntry>): Code
 		}
 	}
 	return { ...DEFAULT_CODEX_UI_PREFS };
+}
+
+export function resolveSessionCodexUiPrefs(entries: ReadonlyArray<CodexUiPrefsEntry>): CodexUiPrefs {
+	return loadCodexUiPrefs(entries);
 }
 
 export function isCodexTheme(name: string | undefined): name is CodexThemeName {

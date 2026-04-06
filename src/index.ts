@@ -9,7 +9,7 @@ import { registerExecCommandTool } from "./tools/exec-command-tool.ts";
 import { createExecSessionManager } from "./tools/exec-session-manager.ts";
 import { buildCodexSystemPrompt, extractPiPromptSkills, type PromptSkill } from "./prompt/build-system-prompt.ts";
 import { applyCodexChrome, buildCodexUiInfoMessage, clearCodexChrome } from "./ui/chrome.ts";
-import { loadCodexUiPrefs, DEFAULT_CODEX_UI_PREFS, CODEX_UI_PREFS_ENTRY, isCodexTheme, type CodexDensity, type CodexThemeName, type CodexUiPrefs } from "./ui/prefs.ts";
+import { resolveSessionCodexUiPrefs, DEFAULT_CODEX_UI_PREFS, CODEX_UI_PREFS_ENTRY, isCodexTheme, type CodexDensity, type CodexThemeName, type CodexUiPrefs, type CodexUiPrefsEntry } from "./ui/prefs.ts";
 import { prefixUserInput, stripUserInputPrefix, shouldPrefixUserInput } from "./ui/input.ts";
 import { registerViewImageTool, supportsOriginalImageDetail } from "./tools/view-image-tool.ts";
 import {
@@ -76,9 +76,7 @@ export default function codexConversion(pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		state.webSearchNoticeShown = false;
-		state.uiPrefs = loadCodexUiPrefs(
-			ctx.sessionManager.getEntries() as Array<{ type?: string; customType?: string; data?: unknown }>,
-		);
+		state.uiPrefs = getSessionUiPrefs(ctx);
 		rememberPreviousTheme(ctx, state);
 		clearApplyPatchRenderState();
 		tracker.clear();
@@ -86,11 +84,13 @@ export default function codexConversion(pi: ExtensionAPI) {
 	});
 
 	pi.on("session_switch", async (_event, ctx) => {
+		state.uiPrefs = getSessionUiPrefs(ctx);
 		rememberPreviousTheme(ctx, state);
 		syncAdapter(pi, ctx, state);
 	});
 
 	pi.on("session_fork", async (_event, ctx) => {
+		state.uiPrefs = getSessionUiPrefs(ctx);
 		rememberPreviousTheme(ctx, state);
 		syncAdapter(pi, ctx, state);
 	});
@@ -263,6 +263,10 @@ function maybeShowWebSearchSessionNote(pi: ExtensionAPI, ctx: ExtensionContext, 
 		display: true,
 	});
 	state.webSearchNoticeShown = true;
+}
+
+function getSessionUiPrefs(ctx: ExtensionContext): CodexUiPrefs {
+	return resolveSessionCodexUiPrefs(ctx.sessionManager.getEntries() as CodexUiPrefsEntry[]);
 }
 
 function registerCodexUiMessageRenderer(pi: ExtensionAPI): void {
