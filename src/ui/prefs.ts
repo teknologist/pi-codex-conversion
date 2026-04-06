@@ -6,7 +6,6 @@ export interface CodexUiPrefs {
 	density: CodexDensity;
 	forceTheme: boolean;
 	showHeader: boolean;
-	showFooter: boolean;
 	compactTools: boolean;
 	promptPrefix: boolean;
 }
@@ -18,7 +17,6 @@ export const DEFAULT_CODEX_UI_PREFS: CodexUiPrefs = {
 	density: "compact",
 	forceTheme: true,
 	showHeader: true,
-	showFooter: true,
 	compactTools: true,
 	promptPrefix: true,
 };
@@ -37,7 +35,6 @@ export function normalizeCodexUiPrefs(input: unknown): CodexUiPrefs {
 		density: source.density === "comfortable" ? "comfortable" : "compact",
 		forceTheme: source.forceTheme ?? DEFAULT_CODEX_UI_PREFS.forceTheme,
 		showHeader: source.showHeader ?? DEFAULT_CODEX_UI_PREFS.showHeader,
-		showFooter: source.showFooter ?? DEFAULT_CODEX_UI_PREFS.showFooter,
 		compactTools: source.compactTools ?? DEFAULT_CODEX_UI_PREFS.compactTools,
 		promptPrefix: source.promptPrefix ?? DEFAULT_CODEX_UI_PREFS.promptPrefix,
 	};

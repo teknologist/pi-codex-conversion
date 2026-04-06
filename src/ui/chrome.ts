@@ -19,12 +19,6 @@ function formatThinking(level: string | undefined): string {
 	return !level || level === "off" ? "standard" : level;
 }
 
-function formatContextLeft(percent: number | null | undefined): string | undefined {
-	if (percent == null) return undefined;
-	const left = Math.max(0, Math.min(100, Math.round(100 - percent)));
-	return `${left}% ctx left`;
-}
-
 export function applyCodexChrome(
 	ctx: ExtensionContext,
 	prefs: CodexUiPrefs,
@@ -77,30 +71,7 @@ export function applyCodexChrome(
 			  })
 			: undefined,
 	);
-	ctx.ui.setFooter(
-		prefs.showFooter
-			? (_tui, theme) => ({
-					invalidate() {},
-					render(width: number): string[] {
-						const modelId = ctx.model?.id ?? "no-model";
-						const thinking = formatThinking(getThinkingLevel());
-						const contextUsage = ctx.getContextUsage();
-						const line = theme.fg(
-							"dim",
-							[
-								modelId,
-								thinking,
-								formatContextLeft(contextUsage?.percent),
-								basename(ctx.cwd),
-							]
-								.filter((part): part is string => Boolean(part))
-								.join(` ${theme.fg("borderMuted", "·")} `),
-						);
-						return [truncateToWidth(line, width)];
-					},
-			  })
-			: undefined,
-	);
+	ctx.ui.setFooter(undefined);
 }
 
 export function clearCodexChrome(ctx: ExtensionContext, previousThemeName?: string | null): void {
@@ -120,7 +91,6 @@ export function buildCodexUiInfoMessage(ctx: ExtensionContext, prefs: CodexUiPre
 		`Density: ${prefs.density}`,
 		`Force theme: ${prefs.forceTheme ? "on" : "off"}`,
 		`Header: ${prefs.showHeader ? "on" : "off"}`,
-		`Footer: ${prefs.showFooter ? "on" : "off"}`,
 		`Compact tools: ${prefs.compactTools ? "on" : "off"}`,
 		`Prompt prefix: ${prefs.promptPrefix ? "on" : "off"}`,
 		`Model: ${ctx.model?.id ?? "none"}`,
