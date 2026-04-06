@@ -2,7 +2,7 @@ import { CustomEditor } from "@mariozechner/pi-coding-agent";
 import type { CodexUiPrefs } from "./prefs.ts";
 
 const PROMPT_BG_BY_THEME = {
-	"Codex Dark": "#343c48",
+	"Codex Dark": "#2f3742",
 	"Codex Light": "#f2f5f8",
 } as const;
 

@@ -90,8 +90,8 @@ test("CodexEditor applies user-message background to the prompt slab contents", 
 		(editor as any).prefs = { density: "compact", themeName: "Codex Dark" };
 
 		const rendered = editor.render(40);
-		assert.match(rendered[0], /\x1b\[48;2;52;60;72mprompt body\x1b\[0m/);
-		assert.match(rendered[1], /\x1b\[48;2;52;60;72mautocomplete row\x1b\[0m/);
+		assert.match(rendered[0], /\x1b\[48;2;47;55;66mprompt body\x1b\[0m/);
+		assert.match(rendered[1], /\x1b\[48;2;47;55;66mautocomplete row\x1b\[0m/);
 	});
 });
 
