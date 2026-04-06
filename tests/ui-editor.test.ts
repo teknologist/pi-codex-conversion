@@ -58,3 +58,21 @@ test("CodexEditor preserves user-authored indicator-like text when it is content
 		assert.deepEqual(editor.render(80), ["  first line", "─── ↓ 3 more thoughts about spacing"]);
 	});
 });
+
+test("CodexEditor reapplies compact padding if Pi startup settings override it", () => {
+	withMockedBaseRender(["content"], (editor) => {
+		editor.setPrefs({ density: "compact" } as any);
+		(editor as any).paddingX = 2;
+		editor.render(80);
+		assert.equal(editor.getPaddingX(), 0);
+	});
+});
+
+test("CodexEditor reapplies comfortable padding if Pi startup settings override it", () => {
+	withMockedBaseRender(["content"], (editor) => {
+		editor.setPrefs({ density: "comfortable" } as any);
+		(editor as any).paddingX = 3;
+		editor.render(80);
+		assert.equal(editor.getPaddingX(), 1);
+	});
+});
