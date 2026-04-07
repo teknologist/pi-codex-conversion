@@ -49,12 +49,10 @@ export function applyCodexChrome(
 			  })
 			: undefined,
 	);
-	ctx.ui.setFooter(undefined);
 }
 
 export function clearCodexChrome(ctx: ExtensionContext, previousThemeName?: string | null): void {
 	ctx.ui.setHeader(undefined);
-	ctx.ui.setFooter(undefined);
 	ctx.ui.setEditorComponent(undefined);
 	ctx.ui.setToolsExpanded(true);
 	if (previousThemeName) {

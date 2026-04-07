@@ -11,7 +11,7 @@ This package replaces Pi's default Codex/GPT experience with a narrower Codex-li
 - preserves Pi's composed system prompt and applies a narrow Codex-oriented delta on top
 - renders exec activity with Codex-style command and background-terminal labels
 - renders `apply_patch` calls with Codex-style `Added` / `Edited` / `Deleted` diff blocks and Pi-style colored diff lines
-- ships bundled `Codex Dark` / `Codex Light` themes plus Codex-like header/footer/editor chrome
+- ships bundled `Codex Dark` / `Codex Light` themes plus Codex-like header/editor chrome
 
 ![Available tools](./available-tools.png)
 
@@ -40,7 +40,7 @@ Notably:
 When adapter mode is active on Codex-like models, the extension can also make Pi feel more like Codex UI:
 
 - bundled `Codex Dark` and `Codex Light` themes
-- compact Codex-style header and footer chrome
+- compact Codex-style header chrome
 - compact editor density with narrower horizontal padding
 - optional `› ` prompt prefix styling for user prompts in the transcript
 - commands to inspect or tweak the UI layer without changing the core adapter behavior
