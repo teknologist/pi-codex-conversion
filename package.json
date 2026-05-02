@@ -55,9 +55,9 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": "^0.62.0",
-    "@mariozechner/pi-tui": "^0.62.0",
-    "@sinclair/typebox": "*"
+    "@mariozechner/pi-coding-agent": "^0.72.1",
+    "@mariozechner/pi-tui": "^0.72.1",
+    "typebox": "^1.1.37"
   },
   "devDependencies": {
     "tsx": "^4.20.5",

@@ -74,22 +74,12 @@ export default function codexConversion(pi: ExtensionAPI) {
 		tracker.recordSessionFinished(sessionId);
 	});
 
-	pi.on("session_start", async (_event, ctx) => {
-		state.webSearchNoticeShown = false;
-		state.uiPrefs = getSessionUiPrefs(ctx);
-		rememberPreviousTheme(ctx, state);
-		clearApplyPatchRenderState();
-		tracker.clear();
-		syncAdapter(pi, ctx, state);
-	});
-
-	pi.on("session_switch", async (_event, ctx) => {
-		state.uiPrefs = getSessionUiPrefs(ctx);
-		rememberPreviousTheme(ctx, state);
-		syncAdapter(pi, ctx, state);
-	});
-
-	pi.on("session_fork", async (_event, ctx) => {
+	pi.on("session_start", async (event, ctx) => {
+		if (event.reason === "startup" || event.reason === "reload") {
+			state.webSearchNoticeShown = false;
+			clearApplyPatchRenderState();
+			tracker.clear();
+		}
 		state.uiPrefs = getSessionUiPrefs(ctx);
 		rememberPreviousTheme(ctx, state);
 		syncAdapter(pi, ctx, state);
