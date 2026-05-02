@@ -4,9 +4,11 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { rm, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { initTheme, type ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { patchFsOps } from "../src/patch/core.ts";
 import { clearApplyPatchRenderState, registerApplyPatchTool } from "../src/tools/apply-patch-tool.ts";
+
+initTheme("dark", false);
 
 function createTheme() {
 	return {
@@ -86,8 +88,104 @@ test("apply_patch renderCall preserves deleted previews after execution removes 
 		);
 
 		assert.match(rendered, /delete-me\.txt \(\+0 -2\)/);
-		assert.match(rendered, /-first/);
-		assert.match(rendered, /-second/);
+		assert.match(rendered, /-1 first/);
+		assert.match(rendered, /-2 second/);
+	} finally {
+		clearApplyPatchRenderState();
+		await rm(cwd, { recursive: true, force: true });
+	}
+});
+
+test("apply_patch renderResult exposes an expanded native-colored diff preview", async () => {
+	const cwd = mkdtempSync(join(tmpdir(), "pi-codex-conversion-"));
+	const { pi, getTool } = createRegisteredTool();
+	registerApplyPatchTool(pi);
+	const theme = createTheme();
+
+	try {
+		writeFileSync(join(cwd, "example.txt"), "line one\nline two\n", "utf8");
+		const patch = `*** Begin Patch
+*** Update File: example.txt
+@@
+ line one
+-line two
++line two changed
+*** End Patch`;
+		const tool = getTool();
+		const execute = tool.execute;
+		const renderResult = tool.renderResult;
+		assert.ok(execute);
+		assert.ok(renderResult);
+
+		const result = (await execute("call-expanded-result-diff", { input: patch }, undefined, undefined, { cwd })) as {
+			content: Array<{ type: string; text?: string }>;
+			details?: unknown;
+		};
+
+		const collapsed = renderComponentText(renderResult(result, { expanded: false, isPartial: false }, theme));
+		const expanded = renderComponentText(renderResult(result, { expanded: true, isPartial: false }, theme));
+
+		assert.equal(collapsed, "");
+		assert.match(expanded, /example\.txt \(\+1 -1\)/);
+		assert.match(expanded, /-2 line two/);
+		assert.match(expanded, /\+2 line two changed/);
+	} finally {
+		clearApplyPatchRenderState();
+		await rm(cwd, { recursive: true, force: true });
+	}
+});
+
+test("apply_patch renderResult ignores legacy details without preview", () => {
+	const { pi, getTool } = createRegisteredTool();
+	registerApplyPatchTool(pi);
+	const theme = createTheme();
+	const renderResult = getTool().renderResult;
+	assert.ok(renderResult);
+
+	const rendered = renderComponentText(
+		renderResult(
+			{
+				content: [{ type: "text", text: "Applied patch successfully." }],
+				details: { status: "success", result: { changedFiles: ["example.txt"] } },
+			},
+			{ expanded: true, isPartial: false },
+			theme,
+		),
+	);
+
+	assert.equal(rendered, "");
+});
+
+test("apply_patch renderResult marks failed targets in expanded partial-failure previews", async () => {
+	const cwd = mkdtempSync(join(tmpdir(), "pi-codex-conversion-"));
+	const { pi, getTool } = createRegisteredTool();
+	registerApplyPatchTool(pi);
+	const theme = createTheme();
+
+	try {
+		const patch = `*** Begin Patch
+*** Add File: created.txt
++hello
+*** Update File: missing.txt
+@@
+-old
++new
+*** End Patch`;
+		const tool = getTool();
+		const execute = tool.execute;
+		const renderResult = tool.renderResult;
+		assert.ok(execute);
+		assert.ok(renderResult);
+
+		const result = (await execute("call-expanded-partial-failure", { input: patch }, undefined, undefined, { cwd })) as {
+			content: Array<{ type: string; text?: string }>;
+			details?: unknown;
+		};
+		const expanded = renderComponentText(renderResult(result, { expanded: true, isPartial: false }, theme));
+
+		assert.match(expanded, /^2 files \(\+2 -1\) \(incomplete\)/);
+		assert.match(expanded, /created\.txt \(\+1 -0\)/);
+		assert.match(expanded, /missing\.txt failed \(\+1 -1\)/);
 	} finally {
 		clearApplyPatchRenderState();
 		await rm(cwd, { recursive: true, force: true });
@@ -296,8 +394,8 @@ test("apply_patch renderCall preserves the original preview for partial failures
 		);
 
 		assert.match(expanded, /delete-me\.txt \(\+0 -2\)/);
-		assert.match(expanded, /-first/);
-		assert.match(expanded, /-second/);
+		assert.match(expanded, /-1 first/);
+		assert.match(expanded, /-2 second/);
 		assert.match(expanded, /missing\.txt failed \(\+1 -1\)/);
 	} finally {
 		clearApplyPatchRenderState();

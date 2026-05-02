@@ -23,6 +23,7 @@ interface ApplyPatchRenderState {
 interface ApplyPatchSuccessDetails {
 	status: "success";
 	result: ExecutePatchResult;
+	preview: ApplyPatchPreview;
 }
 
 interface ApplyPatchPartialFailureDetails {
@@ -32,6 +33,7 @@ interface ApplyPatchPartialFailureDetails {
 	failedTarget?: string;
 	appliedFiles: string[];
 	failedFiles: string[];
+	preview: ApplyPatchPreview;
 	recoveryInstructions: {
 		mustReadFiles: string[];
 		mustNotReadFiles: string[];
@@ -39,6 +41,11 @@ interface ApplyPatchPartialFailureDetails {
 }
 
 type ApplyPatchToolDetails = ApplyPatchSuccessDetails | ApplyPatchPartialFailureDetails;
+
+interface ApplyPatchPreview {
+	collapsed: string;
+	expanded: string;
+}
 
 const applyPatchRenderStates = new Map<string, ApplyPatchRenderState>();
 
@@ -57,7 +64,16 @@ function parseApplyPatchParams(params: unknown): { patchText: string } {
 }
 
 function isApplyPatchToolDetails(details: unknown): details is ApplyPatchToolDetails {
-	return typeof details === "object" && details !== null && "status" in details && "result" in details;
+	if (typeof details !== "object" || details === null || !("status" in details) || !("result" in details)) {
+		return false;
+	}
+	const preview = (details as { preview?: unknown }).preview;
+	return (
+		typeof preview === "object" &&
+		preview !== null &&
+		typeof (preview as { collapsed?: unknown }).collapsed === "string" &&
+		typeof (preview as { expanded?: unknown }).expanded === "string"
+	);
 }
 
 function setApplyPatchRenderState(
@@ -77,6 +93,17 @@ function setApplyPatchRenderState(
 		status,
 		failedTarget,
 	});
+}
+
+function getApplyPatchPreview(toolCallId: string, patchText: string, cwd: string): ApplyPatchPreview {
+	const cached = applyPatchRenderStates.get(toolCallId);
+	if (cached) {
+		return { collapsed: cached.collapsed, expanded: cached.expanded };
+	}
+	return {
+		collapsed: formatApplyPatchSummary(patchText, cwd),
+		expanded: renderApplyPatchCall(patchText, cwd),
+	};
 }
 
 function markApplyPatchPartialFailure(toolCallId: string, failedTarget?: string): void {
@@ -279,6 +306,7 @@ export function registerApplyPatchTool(pi: ExtensionAPI): void {
 						const appliedFiles = error.result.changedFiles.filter((path) => !failedFiles.includes(path));
 						const recoveryMessage = buildPartialFailureMessage(message, failedTarget, error.result);
 						markApplyPatchPartialFailure(toolCallId, failedTarget);
+						const preview = getApplyPatchPreview(toolCallId, typedParams.patchText, ctx.cwd);
 						return {
 							content: [{ type: "text", text: recoveryMessage }],
 							details: {
@@ -288,6 +316,7 @@ export function registerApplyPatchTool(pi: ExtensionAPI): void {
 								failedTarget,
 								appliedFiles,
 								failedFiles,
+								preview,
 								recoveryInstructions: {
 									mustReadFiles: failedFiles,
 									mustNotReadFiles: appliedFiles,
@@ -315,6 +344,7 @@ export function registerApplyPatchTool(pi: ExtensionAPI): void {
 				details: {
 					status: "success",
 					result,
+					preview: getApplyPatchPreview(toolCallId, typedParams.patchText, ctx.cwd),
 				} satisfies ApplyPatchSuccessDetails,
 			};
 		},
@@ -329,7 +359,14 @@ export function registerApplyPatchTool(pi: ExtensionAPI): void {
 			}
 
 			if (result.details.status === "partial_failure") {
+				if (expanded && result.details.preview.expanded.trim().length > 0) {
+					return new Text(renderPartialFailureCall(result.details.preview.expanded, theme, result.details.failedTarget), 0, 0);
+				}
 				return new Container();
+			}
+
+			if (expanded && result.details.preview.expanded.trim().length > 0) {
+				return new Text(result.details.preview.expanded, 0, 0);
 			}
 
 			return new Container();
