@@ -8,7 +8,7 @@ import {
 	type ToolDefinition,
 	type ToolRenderResultOptions,
 } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import { Box, type Component, Text } from "@mariozechner/pi-tui";
 
 interface RenderTheme {
 	fg(role: string, text: string): string;
@@ -18,8 +18,10 @@ interface RenderTheme {
 
 interface SurfaceComponent {
 	setCustomBgFn?: (customBgFn?: (text: string) => string) => void;
-	setBgFn?: (bgFn: (text: string) => string) => void;
+	setBgFn?: (bgFn?: (text: string) => string) => void;
 }
+
+const surfaceInnerComponents = new WeakMap<object, Component>();
 
 interface BashArgs {
 	command?: unknown;
@@ -51,6 +53,30 @@ export function applyToolSuccessSurface<T>(
 		surface.setBgFn(bg);
 	}
 	return component;
+}
+
+export function createToolSuccessSurface(
+	component: Component,
+	theme: RenderTheme,
+	reuse?: Component,
+): Component {
+	const bg = theme.bg
+		? (text: string) => theme.bg!("toolSuccessBg", text)
+		: undefined;
+	const surface = reuse instanceof Box ? reuse : new Box(1, 1, bg);
+	surface.setBgFn(bg);
+	surface.clear();
+	surface.addChild(component);
+	surfaceInnerComponents.set(surface, component);
+	return surface;
+}
+
+function getSurfaceInner(
+	component: Component | undefined,
+): Component | undefined {
+	return component && typeof component === "object"
+		? surfaceInnerComponents.get(component)
+		: undefined;
 }
 
 function plainText(result: BashResultLike): string {
@@ -93,7 +119,7 @@ function extractExitCode(text: string): number | undefined {
 export function renderCompactBashCall(
 	args: BashArgs,
 	theme: RenderTheme,
-): Text {
+): Component {
 	const command =
 		typeof args.command === "string" && args.command.trim().length > 0
 			? shortCommand(args.command)
@@ -102,7 +128,7 @@ export function renderCompactBashCall(
 		typeof args.timeout === "number"
 			? theme.fg("muted", ` (${args.timeout}s timeout)`)
 			: "";
-	return applyToolSuccessSurface(
+	return createToolSuccessSurface(
 		new Text(
 			`${theme.bold("Bash:")} ${theme.fg("muted", command)}${timeout}`,
 			0,
@@ -117,7 +143,7 @@ export function renderCompactBashResult(
 	options: ToolRenderResultOptions,
 	theme: RenderTheme,
 	context: BashRenderContextLike = {},
-): Text {
+): Component {
 	const output = plainText(result);
 	const lines = lineCount(output);
 	const countLabel = lines === 1 ? "1 line" : `${lines} lines`;
@@ -136,7 +162,10 @@ export function renderCompactBashResult(
 	if (shown.text) {
 		outputLines.push("", theme.fg("toolOutput", shown.text));
 	}
-	return applyToolSuccessSurface(new Text(outputLines.join("\n"), 0, 0), theme);
+	return createToolSuccessSurface(
+		new Text(outputLines.join("\n"), 0, 0),
+		theme,
+	);
 }
 
 function withCompactSurface(
@@ -146,15 +175,22 @@ function withCompactSurface(
 		...base,
 		renderShell: "self",
 		renderCall: base.renderCall
-			? (args, theme, context) =>
-					applyToolSuccessSurface(base.renderCall!(args, theme, context), theme)
+			? (args, theme, context) => {
+					const inner = base.renderCall!(args, theme, {
+						...context,
+						lastComponent: getSurfaceInner(context.lastComponent),
+					});
+					return createToolSuccessSurface(inner, theme, context.lastComponent);
+				}
 			: undefined,
 		renderResult: base.renderResult
-			? (result, options, theme, context) =>
-					applyToolSuccessSurface(
-						base.renderResult!(result, options, theme, context),
-						theme,
-					)
+			? (result, options, theme, context) => {
+					const inner = base.renderResult!(result, options, theme, {
+						...context,
+						lastComponent: getSurfaceInner(context.lastComponent),
+					});
+					return createToolSuccessSurface(inner, theme, context.lastComponent);
+				}
 			: undefined,
 	};
 }

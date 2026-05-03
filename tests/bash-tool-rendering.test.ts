@@ -25,7 +25,7 @@ function trimRenderedLines(lines: string[]): string {
 	return lines.map((line) => line.trimEnd()).join("\n");
 }
 
-test("compact bash renderer uses a flat self-rendered label", () => {
+test("compact bash renderer uses default padded self-rendered surface", () => {
 	const theme = createTheme();
 	const call = renderCompactBashCall(
 		{ command: "glab pipeline list --ref deslop", timeout: 20 },
@@ -39,11 +39,11 @@ test("compact bash renderer uses a flat self-rendered label", () => {
 
 	assert.equal(
 		trimRenderedLines(call.render(120)),
-		"Bash: glab pipeline list --ref deslop (20s timeout)",
+		"\n Bash: glab pipeline list --ref deslop (20s timeout)\n",
 	);
 	assert.equal(
 		trimRenderedLines(result.render(120)),
-		"✓ exit 0 (2 lines)\n\nPipelines\n[run] #1",
+		"\n ✓ exit 0 (2 lines)\n\n Pipelines\n [run] #1\n",
 	);
 });
 
@@ -89,7 +89,7 @@ test("compact built-in renderers make bash, read, and write self-rendered", () =
 
 	const read = registered.find((tool) => tool.name === "read");
 	const write = registered.find((tool) => tool.name === "write");
-	const renderContext = {
+	const renderContext: any = {
 		args: {},
 		argsComplete: true,
 		expanded: false,
@@ -104,11 +104,19 @@ test("compact built-in renderers make bash, read, and write self-rendered", () =
 	);
 	assert.equal(read?.renderShell, "self");
 	assert.equal(write?.renderShell, "self");
-	assert.match(
-		read
-			.renderCall({ path: "src/index.ts" }, createSurfaceTheme(), renderContext)
-			.render(80)[0],
-		/^<toolSuccessBg>/,
+	const renderedReadCall = read.renderCall(
+		{ path: "src/index.ts" },
+		createSurfaceTheme(),
+		renderContext,
+	);
+	renderContext.lastComponent = renderedReadCall;
+	assert.match(renderedReadCall.render(80)[0], /^<toolSuccessBg>/);
+	assert.doesNotThrow(() =>
+		read.renderCall(
+			{ path: "tests/bash-tool-rendering.test.ts" },
+			createSurfaceTheme(),
+			renderContext,
+		),
 	);
 	assert.match(
 		write
