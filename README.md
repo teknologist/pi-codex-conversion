@@ -50,12 +50,51 @@ Behavioral precedence stays with this extension: tool/model adaptation wins, and
 Commands:
 
 - `/codex-ui` — show active Codex UI preferences
-- `/codex-ui-config` — open Codex UI settings; writes the default config path `~/.pi/agent/pi-codex-conversion.json`
+- `/codex-config` — open Codex settings; writes the default config path `~/.pi/agent/pi-codex-conversion.json`
+- `/codex-ui-config` — alias for `/codex-config`
 - `/codex-theme dark|light` — switch the bundled Codex theme variant
 - `/codex-density compact|comfortable` — switch editor density
-- `/codex-ui-reset` — restore the default Codex UI preferences
+- `/codex-ui-reset` — restore the default Codex config, including UI, tools, and prompt modes
 
 Set `PI_CODING_AGENT_DIR` to move the config file with the rest of the Pi agent directory.
+
+The config file is only created or updated by settings commands. Missing config preserves default behavior: Codex UI, adapter tools, and prompt rewriting are active only for Codex-like models.
+
+```json
+{
+  "version": 1,
+  "ui": {
+    "enabled": "auto",
+    "themeName": "Codex Dark",
+    "density": "compact",
+    "forceTheme": true,
+    "showHeader": false,
+    "compactTools": true,
+    "promptPrefix": false
+  },
+  "tools": { "enabled": "auto" },
+  "prompt": { "enabled": "auto" }
+}
+```
+
+For styling-only mode on any model while preserving normal Pi tools and prompts:
+
+```json
+{
+  "version": 1,
+  "ui": {
+    "enabled": "always",
+    "themeName": "Codex Dark",
+    "density": "compact",
+    "forceTheme": true,
+    "showHeader": false,
+    "compactTools": true,
+    "promptPrefix": false
+  },
+  "tools": { "enabled": "never" },
+  "prompt": { "enabled": "never" }
+}
+```
 
 ## Layout
 

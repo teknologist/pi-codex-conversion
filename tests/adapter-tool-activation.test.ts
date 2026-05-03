@@ -22,3 +22,10 @@ test("restoreTools strips adapter tools from mixed startup state while keeping u
 		["read", "bash", "edit", "write", "parallel"],
 	);
 });
+
+test("restoreTools without remembered tools only removes adapter tools", () => {
+	assert.deepEqual(
+		restoreTools([], ["exec_command", "write_stdin", "apply_patch", "parallel", "custom_search"]),
+		["parallel", "custom_search"],
+	);
+});

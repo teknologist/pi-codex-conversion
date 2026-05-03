@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { CodexEditor } from "./editor.ts";
+import type { CodexUiConfig } from "./config.ts";
 import type { CodexUiPrefs } from "./prefs.ts";
 
 function basename(path: string): string {
@@ -64,9 +65,19 @@ export function clearCodexChrome(ctx: ExtensionContext, previousThemeName?: stri
 	}
 }
 
+export function clearCodexChromeExceptEditor(ctx: ExtensionContext, previousThemeName?: string | null): void {
+	ctx.ui.setHeader(undefined);
+	ctx.ui.setToolsExpanded(true);
+	if (previousThemeName) {
+		ctx.ui.setTheme(previousThemeName);
+	}
+}
+
 export function buildCodexUiInfoMessage(ctx: ExtensionContext, prefs: CodexUiPrefs): string {
 	const contextUsage = ctx.getContextUsage();
+	const maybeMode = "enabled" in prefs ? [`UI mode: ${(prefs as CodexUiConfig).enabled}`] : [];
 	return [
+		...maybeMode,
 		`Theme: ${prefs.themeName}`,
 		`Density: ${prefs.density}`,
 		`Force theme: ${prefs.forceTheme ? "on" : "off"}`,

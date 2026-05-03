@@ -5,9 +5,9 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_CODEX_UI_PREFS } from "../src/ui/prefs.ts";
-import { formatCodexConfigInfo, getCodexConfigPath, loadCodexConfig, normalizeCodexConfig, writeCodexConfig } from "../src/ui/config.ts";
-import { applyUiSetting } from "../src/ui/config-ui.ts";
-import { readCodexConfigEditorPrefill } from "../src/index.ts";
+import { DEFAULT_CODEX_CONFIG, formatCodexConfigInfo, getCodexConfigPath, loadCodexConfig, normalizeCodexConfig, writeCodexConfig } from "../src/ui/config.ts";
+import { applyConfigSetting } from "../src/ui/config-ui.ts";
+import { readCodexConfigEditorPrefill, shouldActivatePrompt, shouldActivateTools, shouldActivateUi } from "../src/index.ts";
 
 test("getCodexConfigPath respects PI_CODING_AGENT_DIR", () => {
 	assert.equal(
@@ -22,7 +22,10 @@ test("loadCodexConfig does not create missing config and falls back to session U
 		const path = join(dir, "pi-codex-conversion.json");
 		const loaded = loadCodexConfig({ ...DEFAULT_CODEX_UI_PREFS, themeName: "Codex Light" }, path);
 		assert.equal(loaded.exists, false);
+		assert.equal(loaded.config.ui.enabled, "auto");
 		assert.equal(loaded.config.ui.themeName, "Codex Light");
+		assert.equal(loaded.config.tools.enabled, "auto");
+		assert.equal(loaded.config.prompt.enabled, "auto");
 	} finally {
 		await rm(dir, { recursive: true, force: true });
 	}
@@ -34,6 +37,7 @@ test("loadCodexConfig normalizes partial valid config and warns on malformed JSO
 		const path = join(dir, "pi-codex-conversion.json");
 		writeFileSync(path, JSON.stringify({ ui: { density: "comfortable", compactTools: false } }), "utf8");
 		assert.deepEqual(loadCodexConfig(DEFAULT_CODEX_UI_PREFS, path).config.ui, {
+			enabled: "auto",
 			...DEFAULT_CODEX_UI_PREFS,
 			density: "comfortable",
 			compactTools: false,
@@ -43,7 +47,23 @@ test("loadCodexConfig normalizes partial valid config and warns on malformed JSO
 		const malformed = loadCodexConfig(DEFAULT_CODEX_UI_PREFS, path);
 		assert.equal(malformed.exists, true);
 		assert.match(malformed.warning ?? "", /Invalid Codex config ignored/);
-		assert.deepEqual(malformed.config.ui, DEFAULT_CODEX_UI_PREFS);
+		assert.deepEqual(malformed.config, DEFAULT_CODEX_CONFIG);
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+});
+
+test("loadCodexConfig warns when explicit invalid fields are normalized", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "pi-codex-config-"));
+	try {
+		const path = join(dir, "pi-codex-conversion.json");
+		writeFileSync(path, JSON.stringify({ ui: { enabled: "sometimes", forceTheme: "false" }, tools: { enabled: "always" }, prompt: { enabled: "later" } }), "utf8");
+		const loaded = loadCodexConfig(DEFAULT_CODEX_UI_PREFS, path);
+		assert.match(loaded.warning ?? "", /Invalid Codex config fields normalized/);
+		assert.equal(loaded.config.ui.enabled, "auto");
+		assert.equal(loaded.config.ui.forceTheme, DEFAULT_CODEX_CONFIG.ui.forceTheme);
+		assert.equal(loaded.config.tools.enabled, "auto");
+		assert.equal(loaded.config.prompt.enabled, "auto");
 	} finally {
 		await rm(dir, { recursive: true, force: true });
 	}
@@ -53,10 +73,26 @@ test("loadCodexConfig lets durable config win over stale session prefs", async (
 	const dir = mkdtempSync(join(tmpdir(), "pi-codex-config-"));
 	try {
 		const path = join(dir, "pi-codex-conversion.json");
-		writeFileSync(path, JSON.stringify({ ui: { themeName: "Codex Light", density: "comfortable" } }), "utf8");
+		writeFileSync(path, JSON.stringify({ ui: { enabled: "always", themeName: "Codex Light", density: "comfortable" }, tools: { enabled: "never" }, prompt: { enabled: "never" } }), "utf8");
 		const loaded = loadCodexConfig({ ...DEFAULT_CODEX_UI_PREFS, themeName: "Codex Dark", density: "compact" }, path);
+		assert.equal(loaded.config.ui.enabled, "always");
 		assert.equal(loaded.config.ui.themeName, "Codex Light");
 		assert.equal(loaded.config.ui.density, "comfortable");
+		assert.equal(loaded.config.tools.enabled, "never");
+		assert.equal(loaded.config.prompt.enabled, "never");
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+});
+
+test("existing durable config does not use stale session prefs as fallback", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "pi-codex-config-"));
+	try {
+		const path = join(dir, "pi-codex-conversion.json");
+		writeFileSync(path, JSON.stringify({ version: 1 }), "utf8");
+		const loaded = loadCodexConfig({ ...DEFAULT_CODEX_UI_PREFS, themeName: "Codex Light", density: "comfortable" }, path);
+		assert.equal(loaded.config.ui.themeName, DEFAULT_CODEX_CONFIG.ui.themeName);
+		assert.equal(loaded.config.ui.density, DEFAULT_CODEX_CONFIG.ui.density);
 	} finally {
 		await rm(dir, { recursive: true, force: true });
 	}
@@ -70,6 +106,8 @@ test("writeCodexConfig writes normalized JSON with trailing newline", async () =
 		const text = readFileSync(path, "utf8");
 		assert.equal(text.endsWith("\n"), true);
 		assert.equal(JSON.parse(text).ui.themeName, "Codex Light");
+		assert.equal(JSON.parse(text).tools.enabled, "auto");
+		assert.equal(JSON.parse(text).prompt.enabled, "auto");
 	} finally {
 		await rm(dir, { recursive: true, force: true });
 	}
@@ -117,9 +155,28 @@ test("formatCodexConfigInfo includes path, existence, warnings, and JSON", () =>
 	assert.match(text, /"promptPrefix": true/);
 });
 
-test("applyUiSetting constrains UI values", () => {
-	assert.equal(applyUiSetting(DEFAULT_CODEX_UI_PREFS, "themeName", "Codex Light").themeName, "Codex Light");
-	assert.equal(applyUiSetting(DEFAULT_CODEX_UI_PREFS, "density", "comfortable").density, "comfortable");
-	assert.equal(applyUiSetting(DEFAULT_CODEX_UI_PREFS, "promptPrefix", "true").promptPrefix, true);
-	assert.deepEqual(applyUiSetting(DEFAULT_CODEX_UI_PREFS, "unknown", "true"), DEFAULT_CODEX_UI_PREFS);
+test("applyConfigSetting constrains mode and UI values", () => {
+	assert.equal(applyConfigSetting(DEFAULT_CODEX_CONFIG, "ui.enabled", "always").ui.enabled, "always");
+	assert.equal(applyConfigSetting(DEFAULT_CODEX_CONFIG, "tools.enabled", "never").tools.enabled, "never");
+	assert.equal(applyConfigSetting(DEFAULT_CODEX_CONFIG, "prompt.enabled", "never").prompt.enabled, "never");
+	assert.equal(applyConfigSetting(DEFAULT_CODEX_CONFIG, "themeName", "Codex Light").ui.themeName, "Codex Light");
+	assert.equal(applyConfigSetting(DEFAULT_CODEX_CONFIG, "density", "comfortable").ui.density, "comfortable");
+	assert.equal(applyConfigSetting(DEFAULT_CODEX_CONFIG, "promptPrefix", "true").ui.promptPrefix, true);
+	assert.deepEqual(applyConfigSetting(DEFAULT_CODEX_CONFIG, "unknown", "true"), DEFAULT_CODEX_CONFIG);
+});
+
+test("activation helpers implement configured mode semantics", () => {
+	assert.equal(shouldActivateUi("auto", true), true);
+	assert.equal(shouldActivateUi("auto", false), false);
+	assert.equal(shouldActivateUi("always", false), true);
+	assert.equal(shouldActivateUi("never", true), false);
+
+	assert.equal(shouldActivateTools("auto", true), true);
+	assert.equal(shouldActivateTools("auto", false), false);
+	assert.equal(shouldActivateTools("never", true), false);
+
+	assert.equal(shouldActivatePrompt("auto", true), true);
+	assert.equal(shouldActivatePrompt("auto", false), false);
+	assert.equal(shouldActivatePrompt("always", false), true);
+	assert.equal(shouldActivatePrompt("never", true), false);
 });
