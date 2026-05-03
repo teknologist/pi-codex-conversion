@@ -12,7 +12,13 @@ import { Text } from "@mariozechner/pi-tui";
 
 interface RenderTheme {
 	fg(role: string, text: string): string;
+	bg?(role: "toolSuccessBg", text: string): string;
 	bold(text: string): string;
+}
+
+interface SurfaceComponent {
+	setCustomBgFn?: (customBgFn?: (text: string) => string) => void;
+	setBgFn?: (bgFn: (text: string) => string) => void;
 }
 
 interface BashArgs {
@@ -30,6 +36,22 @@ interface BashRenderContextLike {
 }
 
 const PREVIEW_LINES = 5;
+
+export function applyToolSuccessSurface<T>(
+	component: T,
+	theme: RenderTheme,
+): T {
+	if (!theme.bg || !component || typeof component !== "object")
+		return component;
+	const surface = component as SurfaceComponent;
+	const bg = (text: string) => theme.bg!("toolSuccessBg", text);
+	if (typeof surface.setCustomBgFn === "function") {
+		surface.setCustomBgFn(bg);
+	} else if (typeof surface.setBgFn === "function") {
+		surface.setBgFn(bg);
+	}
+	return component;
+}
 
 function plainText(result: BashResultLike): string {
 	return result.content
@@ -80,10 +102,13 @@ export function renderCompactBashCall(
 		typeof args.timeout === "number"
 			? theme.fg("muted", ` (${args.timeout}s timeout)`)
 			: "";
-	return new Text(
-		`${theme.bold("Bash:")} ${theme.fg("muted", command)}${timeout}`,
-		0,
-		0,
+	return applyToolSuccessSurface(
+		new Text(
+			`${theme.bold("Bash:")} ${theme.fg("muted", command)}${timeout}`,
+			0,
+			0,
+		),
+		theme,
 	);
 }
 
@@ -111,7 +136,27 @@ export function renderCompactBashResult(
 	if (shown.text) {
 		outputLines.push("", theme.fg("toolOutput", shown.text));
 	}
-	return new Text(outputLines.join("\n"), 0, 0);
+	return applyToolSuccessSurface(new Text(outputLines.join("\n"), 0, 0), theme);
+}
+
+function withCompactSurface(
+	base: ToolDefinition<any, any, any>,
+): ToolDefinition<any, any, any> {
+	return {
+		...base,
+		renderShell: "self",
+		renderCall: base.renderCall
+			? (args, theme, context) =>
+					applyToolSuccessSurface(base.renderCall!(args, theme, context), theme)
+			: undefined,
+		renderResult: base.renderResult
+			? (result, options, theme, context) =>
+					applyToolSuccessSurface(
+						base.renderResult!(result, options, theme, context),
+						theme,
+					)
+			: undefined,
+	};
 }
 
 export function registerCompactBuiltinToolRenderers(
@@ -165,10 +210,7 @@ function registerReadToolRenderer(
 		return;
 	}
 
-	pi.registerTool({
-		...(base as ToolDefinition<any, any, any>),
-		renderShell: "self",
-	});
+	pi.registerTool(withCompactSurface(base as ToolDefinition<any, any, any>));
 }
 
 function registerWriteToolRenderer(
@@ -183,8 +225,5 @@ function registerWriteToolRenderer(
 		return;
 	}
 
-	pi.registerTool({
-		...(base as ToolDefinition<any, any, any>),
-		renderShell: "self",
-	});
+	pi.registerTool(withCompactSurface(base as ToolDefinition<any, any, any>));
 }
