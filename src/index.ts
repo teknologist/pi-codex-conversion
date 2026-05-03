@@ -4,6 +4,7 @@ import { Box, Text } from "@mariozechner/pi-tui";
 import { getCodexRuntimeShell } from "./adapter/runtime-shell.ts";
 import { CORE_ADAPTER_TOOL_NAMES, DEFAULT_TOOL_NAMES, STATUS_KEY, STATUS_TEXT, VIEW_IMAGE_TOOL_NAME, WEB_SEARCH_TOOL_NAME } from "./adapter/tool-set.ts";
 import { clearApplyPatchRenderState, registerApplyPatchTool } from "./tools/apply-patch-tool.ts";
+import { registerCompactBuiltinToolRenderers } from "./tools/bash-tool-rendering.ts";
 import { isCodexLikeContext, isOpenAICodexContext } from "./adapter/codex-model.ts";
 import { createExecCommandTracker } from "./tools/exec-command-state.ts";
 import { registerExecCommandTool } from "./tools/exec-command-tool.ts";
@@ -184,6 +185,7 @@ function syncAdapter(pi: ExtensionAPI, ctx: ExtensionContext, state: AdapterStat
 	const uiActive = shouldActivateUi(state.config.ui.enabled, isCodexLike);
 	const toolsActive = shouldActivateTools(state.config.tools.enabled, isCodexLike);
 	const promptActive = shouldActivatePrompt(state.config.prompt.enabled, isCodexLike);
+	registerCompactBuiltinToolRenderers(pi, ctx, uiActive && state.config.ui.compactTools);
 	if (toolsActive) maybeShowWebSearchSessionNote(pi, ctx, state);
 
 	setUiActive(pi, ctx, state, uiActive, options);
