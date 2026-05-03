@@ -32,7 +32,7 @@ test("formatApplyPatchCall matches Codex add rendering", async () => {
 			cwd,
 		);
 
-		assert.equal(rendered, "foo.txt (+2 -0)\n  added\n    1 +hello\n    2 +world");
+		assert.equal(rendered, "foo.txt added (+2 -0)\n  1 +hello\n  2 +world");
 	} finally {
 		await rm(cwd, { recursive: true, force: true });
 	}
@@ -55,7 +55,7 @@ test("formatApplyPatchCall matches Codex update rendering", async () => {
 			cwd,
 		);
 
-		assert.equal(rendered, "example.txt (+1 -1)\n  edited\n    1  line one\n    2 -line two\n    2 +line two changed\n    3  line three");
+		assert.equal(rendered, "example.txt edited (+1 -1)\n  1  line one\n  2 -line two\n  2 +line two changed\n  3  line three");
 	} finally {
 		await rm(cwd, { recursive: true, force: true });
 	}
@@ -78,7 +78,7 @@ test("formatApplyPatchCall matches Codex multi-file rendering", async () => {
 			cwd,
 		);
 
-		assert.equal(rendered, "2 files (+2 -1)\n  a.txt (+1 -1)\n    edited\n    1 -one\n    1 +one changed\n  ·\n  b.txt (+1 -0)\n    added\n    1 +new");
+		assert.equal(rendered, "2 files (+2 -1)\n a.txt edited (+1 -1)\n  1 -one\n  1 +one changed\n b.txt added (+1 -0)\n  1 +new");
 	} finally {
 		await rm(cwd, { recursive: true, force: true });
 	}
@@ -96,7 +96,7 @@ test("formatApplyPatchCall matches Codex delete rendering", async () => {
 			cwd,
 		);
 
-		assert.equal(rendered, "tmp_delete_example.txt (+0 -3)\n  deleted\n    1 -first\n    2 -second\n    3 -third");
+		assert.equal(rendered, "tmp_delete_example.txt deleted (+0 -3)\n  1 -first\n  2 -second\n  3 -third");
 	} finally {
 		await rm(cwd, { recursive: true, force: true });
 	}
@@ -120,7 +120,7 @@ test("formatApplyPatchCall matches Codex rename rendering", async () => {
 			cwd,
 		);
 
-		assert.equal(rendered, "old_name.rs → new_name.rs (+1 -1)\n  edited\n    1  A\n    2 -B\n    2 +B changed\n    3  C");
+		assert.equal(rendered, "old_name.rs → new_name.rs edited (+1 -1)\n  1  A\n  2 -B\n  2 +B changed\n  3  C");
 	} finally {
 		await rm(cwd, { recursive: true, force: true });
 	}
@@ -143,7 +143,7 @@ test("formatApplyPatchSummary returns a collapsed summary for single-file edits"
 			cwd,
 		);
 
-		assert.equal(rendered, "example.txt (+1 -1)\n  edited");
+		assert.equal(rendered, "example.txt edited (+1 -1)");
 	} finally {
 		await rm(cwd, { recursive: true, force: true });
 	}
@@ -166,7 +166,7 @@ test("formatApplyPatchSummary returns a collapsed summary for multi-file edits",
 			cwd,
 		);
 
-		assert.equal(rendered, "2 files (+2 -1)\n  a.txt (+1 -1)\n  b.txt (+1 -0)");
+		assert.equal(rendered, "2 files (+2 -1)\n a.txt edited (+1 -1)\n b.txt added (+1 -0)");
 	} finally {
 		await rm(cwd, { recursive: true, force: true });
 	}
@@ -192,7 +192,7 @@ test("renderApplyPatchCall uses Pi diff coloring while preserving Codex layout",
 		assert.notEqual(rendered, stripAnsi(rendered));
 		assert.equal(
 			trimLineEnds(stripAnsi(rendered)),
-			"example.txt (+1 -1)\n  edited\n       1 line one\n      -2 line two\n      +2 line two changed\n       3 line three",
+			"example.txt edited (+1 -1)\n     1 line one\n    -2 line two\n    +2 line two changed\n     3 line three",
 		);
 	} finally {
 		await rm(cwd, { recursive: true, force: true });

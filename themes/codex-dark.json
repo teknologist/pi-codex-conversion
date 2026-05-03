@@ -2,26 +2,26 @@
   "$schema": "https://raw.githubusercontent.com/badlogic/pi-mono/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
   "name": "Codex Dark",
   "vars": {
-    "ink": "#d9dee7",
-    "mutedInk": "#9aa4b3",
-    "dimInk": "#6d7787",
-    "accentBlue": "#8fa3c2",
-    "accentSlate": "#8795a7",
-    "accentTeal": "#8098a3",
-    "successGreen": "#91ae93",
-    "errorRed": "#c79696",
-    "warningAmber": "#b19a76",
-    "surface": "#0a0c0f",
-    "surfaceAlt": "#0b0e12",
-    "surfaceMuted": "#0d1116",
-    "surfaceUser": "#1f2328",
-    "surfaceCustom": "#0e1116",
-    "borderGray": "#212933",
-    "borderBright": "#2b3440",
-    "codeGreen": "#9eb58a",
-    "codeOrange": "#cf9c6d",
-    "codeCyan": "#84aeb9",
-    "codeComment": "#677284"
+    "ink": "#d6d9df",
+    "mutedInk": "#9298a3",
+    "dimInk": "#5f6670",
+    "accentBlue": "#7f8b9d",
+    "accentSlate": "#858b94",
+    "accentTeal": "#788890",
+    "successGreen": "#849985",
+    "errorRed": "#ad8585",
+    "warningAmber": "#9d8b6c",
+    "surface": "#080a0d",
+    "surfaceAlt": "#0a0c10",
+    "surfaceMuted": "#0d1014",
+    "surfaceUser": "#11151a",
+    "surfaceCustom": "#0b0e12",
+    "borderGray": "#171c23",
+    "borderBright": "#20262e",
+    "codeGreen": "#93a583",
+    "codeOrange": "#bd8f67",
+    "codeCyan": "#7d9ba5",
+    "codeComment": "#5e6570"
   },
   "colors": {
     "accent": "accentBlue",
@@ -74,17 +74,17 @@
     "syntaxPunctuation": "accentSlate",
 
     "thinkingOff": "borderGray",
-    "thinkingMinimal": "#3b4553",
-    "thinkingLow": "#4a5768",
-    "thinkingMedium": "#5b6a7d",
-    "thinkingHigh": "#70829a",
-    "thinkingXhigh": "#899fbc",
+    "thinkingMinimal": "#252b34",
+    "thinkingLow": "#303844",
+    "thinkingMedium": "#3f4956",
+    "thinkingHigh": "#536071",
+    "thinkingXhigh": "#6b7b90",
 
     "bashMode": "accentTeal"
   },
   "export": {
-    "pageBg": "#090c10",
-    "cardBg": "#0e1319",
-    "infoBg": "#1d1912"
+    "pageBg": "#080a0d",
+    "cardBg": "#0b0e12",
+    "infoBg": "#17140f"
   }
 }

@@ -92,7 +92,24 @@ test("write_stdin renderCall stays stable after the backing session exits", asyn
 
 		const afterExit = renderComponentText(getTool().renderCall?.(args, theme));
 		assert.equal(afterExit, beforeExit);
-		assert.equal(afterExit, "$ read line\nwaiting · background");
+		assert.equal(afterExit, `$ read line\nwaiting #${started.session_id}`);
+	} finally {
+		sessions.shutdown();
+	}
+});
+
+test("write_stdin renderCall uses compact background session status", () => {
+	const sessions = createFastTestExecSessionManager();
+	const { pi, getTool } = createRegisteredTool();
+	registerWriteStdinTool(pi, sessions);
+	const theme = createTheme();
+
+	try {
+		const waiting = renderComponentText(getTool().renderCall?.({ session_id: 7, chars: "" }, theme));
+		assert.equal(waiting, "#7 background process\nwaiting #7");
+
+		const sent = renderComponentText(getTool().renderCall?.({ session_id: 7, chars: "hello\n" }, theme));
+		assert.equal(sent, "#7 background process\ninput sent");
 	} finally {
 		sessions.shutdown();
 	}
@@ -174,7 +191,7 @@ test("write_stdin renderResult falls back to running-session state from formatte
 			),
 		);
 
-		assert.equal(rendered, "ready\nrunning in background · session 7");
+		assert.equal(rendered, "ready\nbackground #7");
 	} finally {
 		sessions.shutdown();
 	}

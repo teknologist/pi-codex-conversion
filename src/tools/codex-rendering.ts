@@ -6,6 +6,14 @@ export interface RenderTheme {
 	bold(text: string): string;
 }
 
+function renderPrimaryLine(text: string, theme: RenderTheme): string {
+	return theme.bold(text);
+}
+
+function renderMetaLine(text: string, theme: Pick<RenderTheme, "fg">): string {
+	return theme.fg("dim", text);
+}
+
 export function renderExecCommandCall(command: string, state: ExecCommandStatus, theme: RenderTheme): string {
 	const summary = summarizeShellCommand(command);
 	return summary.maskAsExplored ? renderExplorationText([summary.actions], state, theme) : renderCommandText(command, state, theme);
@@ -23,8 +31,8 @@ export function renderWriteStdinCall(
 ): string {
 	const interacted = typeof input === "string" && input.length > 0;
 	const commandLabel = formatTerminalCommand(command, sessionId);
-	const status = interacted ? "sent input" : "waiting";
-	return `${commandLabel}\n${theme.fg("dim", status)}${theme.fg("dim", " · background")}`;
+	const status = interacted ? "input sent" : `waiting #${sessionId}`;
+	return `${commandLabel}\n${renderMetaLine(status, theme)}`;
 }
 
 function renderExplorationText(actionGroups: ShellAction[][], state: ExecCommandStatus, theme: RenderTheme): string {
@@ -34,11 +42,11 @@ function renderExplorationText(actionGroups: ShellAction[][], state: ExecCommand
 	}
 
 	const [first, ...rest] = lines;
-	let text = `${theme.bold(first.body)}`;
-	text += `\n${theme.fg("dim", state === "running" ? `${first.title.toLowerCase()} · running` : first.title.toLowerCase())}`;
+	let text = renderPrimaryLine(first.body, theme);
+	text += `\n${renderMetaLine(state === "running" ? `${first.title.toLowerCase()} running` : first.title.toLowerCase(), theme)}`;
 
 	for (const line of rest) {
-		text += `\n${theme.fg("dim", "  ")}${theme.fg("muted", `${line.title.toLowerCase()} ${line.body}`)}`;
+		text += `\n${theme.fg("dim", " ")}${theme.fg("muted", `${line.title.toLowerCase()} ${line.body}`)}`;
 	}
 
 	return text;
@@ -47,7 +55,7 @@ function renderExplorationText(actionGroups: ShellAction[][], state: ExecCommand
 function renderCommandText(command: string, state: ExecCommandStatus, theme: RenderTheme): string {
 	const commandLabel = formatTerminalCommand(command || undefined);
 	const status = state === "running" ? "running" : "done";
-	return `${commandLabel}\n${theme.fg("dim", status)}`;
+	return `${renderPrimaryLine(commandLabel, theme)}\n${renderMetaLine(status, theme)}`;
 }
 
 export function renderExecResultMeta(
@@ -56,10 +64,10 @@ export function renderExecResultMeta(
 ): string[] {
 	const lines: string[] = [];
 	if (info.sessionId !== undefined) {
-		lines.push(theme.fg("dim", `running in background · session ${info.sessionId}`));
+		lines.push(theme.fg("dim", `background #${info.sessionId}`));
 	}
 	if (info.exitCode !== undefined) {
-		lines.push(theme.fg("muted", `exit ${info.exitCode}`));
+		lines.push(theme.fg(info.exitCode === 0 ? "dim" : "muted", `exit ${info.exitCode}`));
 	}
 	return lines;
 }

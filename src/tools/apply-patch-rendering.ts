@@ -38,15 +38,13 @@ export function formatApplyPatchSummary(patchText: string, cwd = process.cwd()):
 
 	if (files.length === 1) {
 		const [file] = files;
-		lines.push(`${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
-		lines.push(`  ${file.verb.toLowerCase()}`);
+		lines.push(renderFileHeader(file, cwd));
 		return lines.join("\n");
 	}
 
 	lines.push(`${files.length} files ${renderCounts(totalAdded, totalRemoved)}`);
 	for (const file of files) {
-		const prefix = "  ";
-		lines.push(`${prefix}${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
+		lines.push(` ${renderFileHeader(file, cwd)}`);
 	}
 
 	return lines.join("\n");
@@ -71,19 +69,14 @@ export function formatApplyPatchCall(patchText: string, cwd = process.cwd()): st
 
 	if (files.length === 1) {
 		const [file] = files;
-		lines.push(`${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
-		lines.push(`  ${file.verb.toLowerCase()}`);
+		lines.push(renderFileHeader(file, cwd));
 		lines.push(...file.lines.map((line) => formatPreviewLine(line, file.lines)));
 		return lines.join("\n");
 	}
 
 	lines.push(`${files.length} files ${renderCounts(totalAdded, totalRemoved)}`);
-	for (const [index, file] of files.entries()) {
-		if (index > 0) {
-			lines.push(themeSeparator());
-		}
-		lines.push(`  ${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
-		lines.push(`    ${file.verb.toLowerCase()}`);
+	for (const file of files) {
+		lines.push(` ${renderFileHeader(file, cwd)}`);
 		lines.push(...file.lines.map((line) => formatPreviewLine(line, file.lines)));
 	}
 
@@ -109,19 +102,14 @@ export function renderApplyPatchCall(patchText: string, cwd = process.cwd()): st
 
 	if (files.length === 1) {
 		const [file] = files;
-		lines.push(`${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
-		lines.push(`  ${file.verb.toLowerCase()}`);
+		lines.push(renderFileHeader(file, cwd));
 		lines.push(...renderPreviewLines(file.lines));
 		return lines.join("\n");
 	}
 
 	lines.push(`${files.length} files ${renderCounts(totalAdded, totalRemoved)}`);
-	for (const [index, file] of files.entries()) {
-		if (index > 0) {
-			lines.push(themeSeparator());
-		}
-		lines.push(`  ${formatPatchTarget(file.path, file.movePath, cwd)} ${renderCounts(file.added, file.removed)}`);
-		lines.push(`    ${file.verb.toLowerCase()}`);
+	for (const file of files) {
+		lines.push(` ${renderFileHeader(file, cwd)}`);
 		lines.push(...renderPreviewLines(file.lines));
 	}
 
@@ -239,7 +227,7 @@ function buildUpdatePreview(action: ParsedPatchAction, cwd: string): { added: nu
 
 function formatPreviewLine(line: PreviewLine, lines: PreviewLine[]): string {
 	const numberWidth = Math.max(1, ...lines.map((entry) => String(entry.lineNumber).length));
-	return `    ${String(line.lineNumber).padStart(numberWidth, " ")} ${line.marker}${line.text}`;
+	return `  ${String(line.lineNumber).padStart(numberWidth, " ")} ${line.marker}${line.text}`;
 }
 
 function renderPreviewLines(lines: PreviewLine[]): string[] {
@@ -254,14 +242,10 @@ function renderPreviewLines(lines: PreviewLine[]): string[] {
 	try {
 		return renderDiff(diffText)
 			.split("\n")
-			.map((line) => `      ${line}`);
+			.map((line) => `    ${line}`);
 	} catch {
 		return lines.map((line) => formatPreviewLine(line, lines));
 	}
-}
-
-function themeSeparator(): string {
-	return "  ·";
 }
 
 function normalizePatchLine(rawLine: string): PreviewLine {
@@ -354,4 +338,8 @@ function splitFileLines(text: string): string[] {
 
 function renderCounts(added: number, removed: number): string {
 	return `(+${added} -${removed})`;
+}
+
+function renderFileHeader(file: FilePreview, cwd: string): string {
+	return `${formatPatchTarget(file.path, file.movePath, cwd)} ${file.verb.toLowerCase()} ${renderCounts(file.added, file.removed)}`;
 }

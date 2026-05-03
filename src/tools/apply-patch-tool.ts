@@ -183,19 +183,29 @@ function renderFailedCall(
 }
 
 function markFailedTargetLine(line: string, failedTarget: string): string | undefined {
-	const suffixMatch = line.match(/ \(\+\d+ -\d+\)$/);
+	const suffixMatch = line.match(/(?: (?:added|deleted|edited))? (\(\+\d+ -\d+\))$/);
 	if (!suffixMatch) {
 		return undefined;
 	}
-	const suffix = suffixMatch[0];
+	const suffix = ` ${suffixMatch[1]}`;
 	const prefixAndTarget = line.slice(0, -suffix.length);
-	const candidatePrefixes = ["  ", "    "];
+	const candidatePrefixes = [" ", "  ", "    "];
 	for (const prefix of candidatePrefixes) {
+		const operationMatch = prefixAndTarget.match(
+			new RegExp(`^${prefix.replace(/ /g, "\\s")}${escapeRegExp(failedTarget)} (added|deleted|edited)$`),
+		);
+		if (operationMatch) {
+			return `${prefix}${failedTarget} failed${suffix}`;
+		}
 		if (prefixAndTarget === `${prefix}${failedTarget}`) {
 			return `${prefix}${failedTarget} failed${suffix}`;
 		}
 	}
 	return undefined;
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function summarizePatchCounts(result: ExecutePatchResult): string {

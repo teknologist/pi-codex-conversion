@@ -22,7 +22,7 @@ test("renderGroupedExecCommandCall coalesces consecutive read-only calls like Co
 		theme,
 	);
 
-	assert.equal(text, "shimmer_spans in src\nsearch\n  read shimmer.rs, status_indicator_widget.rs");
+	assert.equal(text, "shimmer_spans in src\nsearch\n read shimmer.rs, status_indicator_widget.rs");
 });
 
 test("exec tracker hides earlier grouped exploring rows and keeps the latest visible", () => {

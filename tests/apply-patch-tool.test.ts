@@ -87,7 +87,7 @@ test("apply_patch renderCall preserves deleted previews after execution removes 
 			getTool().renderCall?.({ input: patch }, theme, { toolCallId: "call-delete", expanded: true }),
 		);
 
-		assert.match(rendered, /delete-me\.txt \(\+0 -2\)/);
+		assert.match(rendered, /delete-me\.txt deleted \(\+0 -2\)/);
 		assert.match(rendered, /-1 first/);
 		assert.match(rendered, /-2 second/);
 	} finally {
@@ -126,7 +126,7 @@ test("apply_patch renderResult exposes an expanded native-colored diff preview",
 		const expanded = renderComponentText(renderResult(result, { expanded: true, isPartial: false }, theme));
 
 		assert.equal(collapsed, "");
-		assert.match(expanded, /example\.txt \(\+1 -1\)/);
+		assert.match(expanded, /example\.txt edited \(\+1 -1\)/);
 		assert.match(expanded, /-2 line two/);
 		assert.match(expanded, /\+2 line two changed/);
 	} finally {
@@ -184,7 +184,7 @@ test("apply_patch renderResult marks failed targets in expanded partial-failure 
 		const expanded = renderComponentText(renderResult(result, { expanded: true, isPartial: false }, theme));
 
 		assert.match(expanded, /^2 files \(\+2 -1\) \(incomplete\)/);
-		assert.match(expanded, /created\.txt \(\+1 -0\)/);
+		assert.match(expanded, /created\.txt added \(\+1 -0\)/);
 		assert.match(expanded, /missing\.txt failed \(\+1 -1\)/);
 	} finally {
 		clearApplyPatchRenderState();
@@ -282,7 +282,7 @@ test("apply_patch renderCall shows partial failure inline after some hunks alrea
 		assert.match(collapsed, /^2 files \(\+2 -1\) \(incomplete\)/);
 		assert.match(collapsed, /missing\.txt failed \(\+1 -1\)/);
 		assert.match(expanded, /^2 files \(\+2 -1\) \(incomplete\)/);
-		assert.match(expanded, /created\.txt \(\+1 -0\)/);
+		assert.match(expanded, /created\.txt added \(\+1 -0\)/);
 		assert.match(expanded, /missing\.txt failed \(\+1 -1\)/);
 	} finally {
 		clearApplyPatchRenderState();
@@ -359,7 +359,7 @@ test("apply_patch renderCall only marks the exact failed entry inline", async ()
 
 		assert.match(collapsed, /foo\.txt failed \(\+1 -1\)/);
 		assert.doesNotMatch(collapsed, /foo\.txt failed\.bak/);
-		assert.match(collapsed, /foo\.txt\.bak \(\+1 -0\)/);
+		assert.match(collapsed, /foo\.txt\.bak added \(\+1 -0\)/);
 	} finally {
 		clearApplyPatchRenderState();
 		await rm(cwd, { recursive: true, force: true });
@@ -393,7 +393,7 @@ test("apply_patch renderCall preserves the original preview for partial failures
 			renderCall({ input: patch }, theme, { toolCallId: "call-preview-partial-failure", expanded: true, cwd }),
 		);
 
-		assert.match(expanded, /delete-me\.txt \(\+0 -2\)/);
+		assert.match(expanded, /delete-me\.txt deleted \(\+0 -2\)/);
 		assert.match(expanded, /-1 first/);
 		assert.match(expanded, /-2 second/);
 		assert.match(expanded, /missing\.txt failed \(\+1 -1\)/);
@@ -442,7 +442,7 @@ test("apply_patch renderCall marks single-file partial failures after warning st
 			renderCall({ input: patch }, theme, { toolCallId: "call-single-file-partial-failure", expanded: false, cwd }),
 		);
 
-		assert.match(collapsed, /^source\.txt → moved\/source\.txt \(\+1 -1\) \(incomplete\)/);
+		assert.match(collapsed, /^source\.txt → moved\/source\.txt edited \(\+1 -1\) \(incomplete\)/);
 	} finally {
 		clearApplyPatchRenderState();
 		await rm(cwd, { recursive: true, force: true });

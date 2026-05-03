@@ -85,7 +85,7 @@ test("exec_command renderCall groups consecutive read-only execs when toolCallId
 		tracker.recordStart("call-1", "cat alpha.ts");
 		const first = getTool().renderCall?.({ cmd: "cat alpha.ts" }, theme, { toolCallId: "call-1", invalidate: () => {} });
 		assert.ok(first);
-		assert.equal(trimRenderedLines(first.render(120)), "alpha.ts\nread · running");
+		assert.equal(trimRenderedLines(first.render(120)), "alpha.ts\nread running");
 
 		tracker.recordStart("call-2", "cat beta.ts");
 		const hidden = getTool().renderCall?.({ cmd: "cat alpha.ts" }, theme, { toolCallId: "call-1", invalidate: () => {} });
@@ -94,7 +94,7 @@ test("exec_command renderCall groups consecutive read-only execs when toolCallId
 
 		const grouped = getTool().renderCall?.({ cmd: "cat beta.ts" }, theme, { toolCallId: "call-2", invalidate: () => {} });
 		assert.ok(grouped);
-		assert.equal(trimRenderedLines(grouped.render(120)), "alpha.ts, beta.ts\nread · running");
+		assert.equal(trimRenderedLines(grouped.render(120)), "alpha.ts, beta.ts\nread running");
 	} finally {
 		sessions.shutdown();
 	}
