@@ -291,10 +291,10 @@ function persistUiPrefs(pi: ExtensionAPI, ctx: ExtensionContext, prefs: CodexUiP
 	pi.appendEntry(CODEX_UI_PREFS_ENTRY, prefs);
 }
 
-function applyAndPersistUiPrefs(pi: ExtensionAPI, ctx: ExtensionContext, state: AdapterState, prefs: CodexUiPrefs): void {
+function applyAndPersistUiPrefs(pi: ExtensionAPI, ctx: ExtensionContext, state: AdapterState, prefs: CodexUiPrefs, options: { editor?: boolean } = {}): void {
 	state.uiPrefs = prefs;
 	persistUiPrefs(pi, ctx, state.uiPrefs);
-	if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+	if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel(), options);
 }
 
 function parseThemeArg(arg: string): CodexThemeName | undefined {
@@ -370,7 +370,7 @@ function registerCodexUiCommands(pi: ExtensionAPI, state: AdapterState): void {
 					configPath: loaded.path,
 					theme,
 					onPrefsChange: (prefs) => {
-						applyAndPersistUiPrefs(pi, ctx, state, prefs);
+						applyAndPersistUiPrefs(pi, ctx, state, prefs, { editor: false });
 						ctx.ui.notify("Codex UI config saved", "info");
 					},
 					done,
@@ -382,6 +382,10 @@ function registerCodexUiCommands(pi: ExtensionAPI, state: AdapterState): void {
 			);
 
 			const action = await runConfigOverlay();
+			if (action.type === "close") {
+				if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+				return;
+			}
 			if (action.type === "reset") {
 				applyAndPersistUiPrefs(pi, ctx, state, { ...DEFAULT_CODEX_UI_PREFS });
 				ctx.ui.notify("Codex UI reset to defaults", "info");

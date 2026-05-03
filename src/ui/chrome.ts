@@ -22,16 +22,20 @@ export function applyCodexChrome(
 	ctx: ExtensionContext,
 	prefs: CodexUiPrefs,
 	getThinkingLevel: () => string,
+	options: { editor?: boolean } = {},
 ): void {
+	const applyEditor = options.editor ?? true;
 	if (prefs.forceTheme) {
 		ctx.ui.setTheme(prefs.themeName);
 	}
 	ctx.ui.setToolsExpanded(!prefs.compactTools);
-	ctx.ui.setEditorComponent((tui, theme, keybindings) => {
-		const editor = new CodexEditor(tui, theme, keybindings);
-		editor.setPrefs(prefs);
-		return editor;
-	});
+	if (applyEditor) {
+		ctx.ui.setEditorComponent((tui, theme, keybindings) => {
+			const editor = new CodexEditor(tui, theme, keybindings);
+			editor.setPrefs(prefs);
+			return editor;
+		});
+	}
 	ctx.ui.setHeader(
 		prefs.showHeader
 			? (_tui, theme) => ({
