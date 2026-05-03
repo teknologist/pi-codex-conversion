@@ -13,11 +13,11 @@
     "warningAmber": "#9d8b6c",
     "surface": "#000000",
     "surfaceAlt": "#000000",
-    "surfaceMuted": "#0d1014",
-    "surfaceUser": "#11151a",
-    "surfaceCustom": "#0b0e12",
-    "borderGray": "#171c23",
-    "borderBright": "#20262e",
+    "surfaceMuted": "#000000",
+    "surfaceUser": "#000000",
+    "surfaceCustom": "#000000",
+    "borderGray": "#000000",
+    "borderBright": "#000000",
     "codeGreen": "#93a583",
     "codeOrange": "#bd8f67",
     "codeCyan": "#7d9ba5",
@@ -85,6 +85,6 @@
   "export": {
     "pageBg": "#000000",
     "cardBg": "#000000",
-    "infoBg": "#17140f"
+    "infoBg": "#000000"
   }
 }
