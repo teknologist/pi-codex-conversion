@@ -1,7 +1,7 @@
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
-import { CodexEditor } from "./editor.ts";
 import type { CodexUiConfig } from "./config.ts";
+import { CodexEditor } from "./editor.ts";
 import type { CodexUiPrefs } from "./prefs.ts";
 
 function basename(path: string): string {
@@ -15,8 +15,27 @@ function fitVisible(text: string, width: number): string {
 	return truncated + " ".repeat(Math.max(0, width - visibleWidth(truncated)));
 }
 
+const patchedThemes = new WeakSet<object>();
+
+interface ThemeWithBackgroundAliases extends Theme {
+	getBgAnsi(color: string): string;
+}
+
 function formatThinking(level: string | undefined): string {
 	return !level || level === "off" ? "standard" : level;
+}
+
+export function patchToolBackgroundAliases(theme: Theme): void {
+	if (patchedThemes.has(theme)) return;
+	const themeWithAliases = theme as ThemeWithBackgroundAliases;
+	const originalGetBgAnsi = themeWithAliases.getBgAnsi.bind(themeWithAliases);
+	themeWithAliases.getBgAnsi = (color: string) => {
+		if (color === "toolBg" || color === "background") {
+			return originalGetBgAnsi("toolSuccessBg");
+		}
+		return originalGetBgAnsi(color);
+	};
+	patchedThemes.add(theme);
 }
 
 export function applyCodexChrome(
@@ -29,6 +48,7 @@ export function applyCodexChrome(
 	if (prefs.forceTheme) {
 		ctx.ui.setTheme(prefs.themeName);
 	}
+	patchToolBackgroundAliases(ctx.ui.theme);
 	ctx.ui.setToolsExpanded(!prefs.compactTools);
 	if (applyEditor) {
 		ctx.ui.setEditorComponent((tui, theme, keybindings) => {
@@ -51,12 +71,15 @@ export function applyCodexChrome(
 							),
 						];
 					},
-			  })
+				})
 			: undefined,
 	);
 }
 
-export function clearCodexChrome(ctx: ExtensionContext, previousThemeName?: string | null): void {
+export function clearCodexChrome(
+	ctx: ExtensionContext,
+	previousThemeName?: string | null,
+): void {
 	ctx.ui.setHeader(undefined);
 	ctx.ui.setEditorComponent(undefined);
 	ctx.ui.setToolsExpanded(true);
@@ -65,7 +88,10 @@ export function clearCodexChrome(ctx: ExtensionContext, previousThemeName?: stri
 	}
 }
 
-export function clearCodexChromeExceptEditor(ctx: ExtensionContext, previousThemeName?: string | null): void {
+export function clearCodexChromeExceptEditor(
+	ctx: ExtensionContext,
+	previousThemeName?: string | null,
+): void {
 	ctx.ui.setHeader(undefined);
 	ctx.ui.setToolsExpanded(true);
 	if (previousThemeName) {
@@ -73,9 +99,13 @@ export function clearCodexChromeExceptEditor(ctx: ExtensionContext, previousThem
 	}
 }
 
-export function buildCodexUiInfoMessage(ctx: ExtensionContext, prefs: CodexUiPrefs): string {
+export function buildCodexUiInfoMessage(
+	ctx: ExtensionContext,
+	prefs: CodexUiPrefs,
+): string {
 	const contextUsage = ctx.getContextUsage();
-	const maybeMode = "enabled" in prefs ? [`UI mode: ${(prefs as CodexUiConfig).enabled}`] : [];
+	const maybeMode =
+		"enabled" in prefs ? [`UI mode: ${(prefs as CodexUiConfig).enabled}`] : [];
 	return [
 		...maybeMode,
 		`Theme: ${prefs.themeName}`,

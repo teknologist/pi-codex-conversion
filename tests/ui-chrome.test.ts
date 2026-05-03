@@ -1,8 +1,20 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { applyCodexChrome } from "../src/ui/chrome.ts";
+import {
+	applyCodexChrome,
+	patchToolBackgroundAliases,
+} from "../src/ui/chrome.ts";
 import { DEFAULT_CODEX_UI_PREFS } from "../src/ui/prefs.ts";
+
+function createTheme() {
+	return {
+		getBgAnsi: (key: string) => {
+			if (key === "toolSuccessBg") return "\u001b[48;2;0;0;0m";
+			throw new Error(`Unknown theme background color: ${key}`);
+		},
+	};
+}
 
 test("applyCodexChrome can skip editor replacement to preserve modal focus", () => {
 	const calls: string[] = [];
@@ -10,6 +22,7 @@ test("applyCodexChrome can skip editor replacement to preserve modal focus", () 
 		cwd: "/tmp/project",
 		model: { id: "codex" },
 		ui: {
+			theme: createTheme(),
 			setTheme: () => calls.push("theme"),
 			setToolsExpanded: () => calls.push("tools"),
 			setEditorComponent: () => calls.push("editor"),
@@ -28,6 +41,7 @@ test("applyCodexChrome replaces editor by default", () => {
 		cwd: "/tmp/project",
 		model: { id: "codex" },
 		ui: {
+			theme: createTheme(),
 			setTheme: () => calls.push("theme"),
 			setToolsExpanded: () => calls.push("tools"),
 			setEditorComponent: () => calls.push("editor"),
@@ -38,4 +52,13 @@ test("applyCodexChrome replaces editor by default", () => {
 	applyCodexChrome(ctx, DEFAULT_CODEX_UI_PREFS, () => "off");
 
 	assert.deepEqual(calls, ["theme", "tools", "editor", "header"]);
+});
+
+test("patchToolBackgroundAliases maps pi-pretty aliases to pure black tool background", () => {
+	const theme = createTheme();
+
+	patchToolBackgroundAliases(theme as never);
+
+	assert.equal(theme.getBgAnsi("toolBg"), "\u001b[48;2;0;0;0m");
+	assert.equal(theme.getBgAnsi("background"), "\u001b[48;2;0;0;0m");
 });
