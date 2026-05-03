@@ -63,7 +63,7 @@ export function createToolSuccessSurface(
 	const bg = theme.bg
 		? (text: string) => theme.bg!("toolSuccessBg", text)
 		: undefined;
-	const surface = reuse instanceof Box ? reuse : new Box(1, 1, bg);
+	const surface = reuse instanceof Box ? reuse : new Box();
 	surface.setBgFn(bg);
 	surface.clear();
 	surface.addChild(component);
