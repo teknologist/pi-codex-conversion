@@ -42,9 +42,9 @@
     "customMessageBg": "surfaceCustom",
     "customMessageText": "ink",
     "customMessageLabel": "accentBlue",
-    "toolPendingBg": "surfaceAlt",
-    "toolSuccessBg": "surfaceAlt",
-    "toolErrorBg": "surfaceAlt",
+    "toolPendingBg": "surface",
+    "toolSuccessBg": "surface",
+    "toolErrorBg": "surface",
     "toolTitle": "ink",
     "toolOutput": "mutedInk",
 
