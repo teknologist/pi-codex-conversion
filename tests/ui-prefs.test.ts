@@ -12,6 +12,10 @@ import {
 test("normalizeCodexUiPrefs falls back to defaults for invalid input", () => {
 	assert.deepEqual(normalizeCodexUiPrefs(null), DEFAULT_CODEX_UI_PREFS);
 	assert.deepEqual(normalizeCodexUiPrefs({ themeName: "nope" }), DEFAULT_CODEX_UI_PREFS);
+	assert.deepEqual(
+		normalizeCodexUiPrefs({ forceTheme: "false", showHeader: "true", compactTools: 0, promptPrefix: 1 }),
+		DEFAULT_CODEX_UI_PREFS,
+	);
 });
 
 test("loadCodexUiPrefs loads the most recent matching custom entry", () => {

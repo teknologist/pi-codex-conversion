@@ -50,9 +50,12 @@ Behavioral precedence stays with this extension: tool/model adaptation wins, and
 Commands:
 
 - `/codex-ui` — show active Codex UI preferences
+- `/codex-ui-config` — open Codex UI settings; writes the default config path `~/.pi/agent/pi-codex-conversion.json`
 - `/codex-theme dark|light` — switch the bundled Codex theme variant
 - `/codex-density compact|comfortable` — switch editor density
 - `/codex-ui-reset` — restore the default Codex UI preferences
+
+Set `PI_CODING_AGENT_DIR` to move the config file with the rest of the Pi agent directory.
 
 ## Layout
 

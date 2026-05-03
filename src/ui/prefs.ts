@@ -35,10 +35,10 @@ export function normalizeCodexUiPrefs(input: unknown): CodexUiPrefs {
 	return {
 		themeName: source.themeName === "Codex Light" ? "Codex Light" : "Codex Dark",
 		density: source.density === "comfortable" ? "comfortable" : "compact",
-		forceTheme: source.forceTheme ?? DEFAULT_CODEX_UI_PREFS.forceTheme,
-		showHeader: source.showHeader ?? DEFAULT_CODEX_UI_PREFS.showHeader,
-		compactTools: source.compactTools ?? DEFAULT_CODEX_UI_PREFS.compactTools,
-		promptPrefix: source.promptPrefix ?? DEFAULT_CODEX_UI_PREFS.promptPrefix,
+		forceTheme: typeof source.forceTheme === "boolean" ? source.forceTheme : DEFAULT_CODEX_UI_PREFS.forceTheme,
+		showHeader: typeof source.showHeader === "boolean" ? source.showHeader : DEFAULT_CODEX_UI_PREFS.showHeader,
+		compactTools: typeof source.compactTools === "boolean" ? source.compactTools : DEFAULT_CODEX_UI_PREFS.compactTools,
+		promptPrefix: typeof source.promptPrefix === "boolean" ? source.promptPrefix : DEFAULT_CODEX_UI_PREFS.promptPrefix,
 	};
 }
 

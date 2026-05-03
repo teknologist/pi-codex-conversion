@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Box, Text } from "@mariozechner/pi-tui";
 import { getCodexRuntimeShell } from "./adapter/runtime-shell.ts";
@@ -9,6 +10,8 @@ import { registerExecCommandTool } from "./tools/exec-command-tool.ts";
 import { createExecSessionManager } from "./tools/exec-session-manager.ts";
 import { buildCodexSystemPrompt, extractPiPromptSkills, type PromptSkill } from "./prompt/build-system-prompt.ts";
 import { applyCodexChrome, buildCodexUiInfoMessage, clearCodexChrome } from "./ui/chrome.ts";
+import { formatCodexConfigInfo, loadCodexConfig, normalizeCodexConfig, writeCodexConfig, type CodexConfig } from "./ui/config.ts";
+import { CodexUiConfigComponent, type CodexUiConfigAction } from "./ui/config-ui.ts";
 import { resolveSessionCodexUiPrefs, DEFAULT_CODEX_UI_PREFS, CODEX_UI_PREFS_ENTRY, isCodexTheme, type CodexDensity, type CodexThemeName, type CodexUiPrefs, type CodexUiPrefsEntry } from "./ui/prefs.ts";
 import { prefixUserInput, stripUserInputPrefix, shouldPrefixUserInput } from "./ui/input.ts";
 import { registerViewImageTool, supportsOriginalImageDetail } from "./tools/view-image-tool.ts";
@@ -80,7 +83,7 @@ export default function codexConversion(pi: ExtensionAPI) {
 			clearApplyPatchRenderState();
 			tracker.clear();
 		}
-		state.uiPrefs = getSessionUiPrefs(ctx);
+		state.uiPrefs = getEffectiveUiPrefs(ctx);
 		rememberPreviousTheme(ctx, state);
 		syncAdapter(pi, ctx, state);
 	});
@@ -255,8 +258,13 @@ function maybeShowWebSearchSessionNote(pi: ExtensionAPI, ctx: ExtensionContext, 
 	state.webSearchNoticeShown = true;
 }
 
-function getSessionUiPrefs(ctx: ExtensionContext): CodexUiPrefs {
-	return resolveSessionCodexUiPrefs(ctx.sessionManager.getEntries() as CodexUiPrefsEntry[]);
+function getEffectiveUiPrefs(ctx: ExtensionContext): CodexUiPrefs {
+	const sessionPrefs = resolveSessionCodexUiPrefs(ctx.sessionManager.getEntries() as CodexUiPrefsEntry[]);
+	const loaded = loadCodexConfig(sessionPrefs);
+	if (loaded.warning && ctx.hasUI) {
+		ctx.ui.notify(loaded.warning, "warning");
+	}
+	return loaded.config.ui;
 }
 
 function registerCodexUiMessageRenderer(pi: ExtensionAPI): void {
@@ -273,8 +281,20 @@ function sendCodexUiInfoMessage(pi: ExtensionAPI, title: string, content: string
 	pi.sendMessage({ customType: "codex-ui-info", content, display: true, details: { title } });
 }
 
-function persistUiPrefs(pi: ExtensionAPI, prefs: CodexUiPrefs): void {
+function persistUiPrefs(pi: ExtensionAPI, ctx: ExtensionContext, prefs: CodexUiPrefs): void {
+	try {
+		writeCodexConfig({ version: 1, ui: prefs });
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		ctx.ui.notify(`Codex UI config not saved: ${message}`, "error");
+	}
 	pi.appendEntry(CODEX_UI_PREFS_ENTRY, prefs);
+}
+
+function applyAndPersistUiPrefs(pi: ExtensionAPI, ctx: ExtensionContext, state: AdapterState, prefs: CodexUiPrefs): void {
+	state.uiPrefs = prefs;
+	persistUiPrefs(pi, ctx, state.uiPrefs);
+	if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
 }
 
 function parseThemeArg(arg: string): CodexThemeName | undefined {
@@ -311,9 +331,7 @@ function registerCodexUiCommands(pi: ExtensionAPI, state: AdapterState): void {
 				ctx.ui.notify("Usage: /codex-theme dark|light", "warning");
 				return;
 			}
-			state.uiPrefs = { ...state.uiPrefs, themeName };
-			persistUiPrefs(pi, state.uiPrefs);
-			if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+			applyAndPersistUiPrefs(pi, ctx, state, { ...state.uiPrefs, themeName });
 			ctx.ui.notify(`Codex theme set to ${themeName}`, "info");
 		},
 	});
@@ -330,22 +348,87 @@ function registerCodexUiCommands(pi: ExtensionAPI, state: AdapterState): void {
 				ctx.ui.notify("Usage: /codex-density compact|comfortable", "warning");
 				return;
 			}
-			state.uiPrefs = { ...state.uiPrefs, density };
-			persistUiPrefs(pi, state.uiPrefs);
-			if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+			applyAndPersistUiPrefs(pi, ctx, state, { ...state.uiPrefs, density });
 			ctx.ui.notify(`Codex density set to ${density}`, "info");
+		},
+	});
+
+	pi.registerCommand("codex-ui-config", {
+		description: "Open Codex UI configuration",
+		handler: async (_args, ctx) => {
+			const loaded = loadCodexConfig(state.uiPrefs);
+			state.uiPrefs = loaded.config.ui;
+			if (!ctx.hasUI) {
+				sendCodexUiInfoMessage(pi, "Codex UI config", formatCodexConfigInfo(loaded));
+				return;
+			}
+			if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+
+			const runConfigOverlay = async (): Promise<CodexUiConfigAction> => ctx.ui.custom<CodexUiConfigAction>(
+				(_tui, theme, _keybindings, done) => new CodexUiConfigComponent({
+					prefs: state.uiPrefs,
+					configPath: loaded.path,
+					theme,
+					onPrefsChange: (prefs) => {
+						applyAndPersistUiPrefs(pi, ctx, state, prefs);
+						ctx.ui.notify("Codex UI config saved", "info");
+					},
+					done,
+				}),
+				{
+					overlay: true,
+					overlayOptions: { anchor: "center", width: "70%", minWidth: 56, maxHeight: "80%", margin: 2 },
+				},
+			);
+
+			const action = await runConfigOverlay();
+			if (action.type === "reset") {
+				applyAndPersistUiPrefs(pi, ctx, state, { ...DEFAULT_CODEX_UI_PREFS });
+				ctx.ui.notify("Codex UI reset to defaults", "info");
+				return;
+			}
+			if (action.type === "edit-json") {
+				await editCodexConfigJson(pi, ctx, state, loaded.path);
+			}
 		},
 	});
 
 	pi.registerCommand("codex-ui-reset", {
 		description: "Restore Codex UI defaults",
 		handler: async (_args, ctx) => {
-			state.uiPrefs = { ...DEFAULT_CODEX_UI_PREFS };
-			persistUiPrefs(pi, state.uiPrefs);
-			if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+			applyAndPersistUiPrefs(pi, ctx, state, { ...DEFAULT_CODEX_UI_PREFS });
 			ctx.ui.notify("Codex UI reset to defaults", "info");
 		},
 	});
+}
+
+async function editCodexConfigJson(pi: ExtensionAPI, ctx: ExtensionContext, state: AdapterState, path: string): Promise<void> {
+	const currentConfig: CodexConfig = { version: 1, ui: state.uiPrefs };
+	const { text: prefill, warning } = readCodexConfigEditorPrefill(path, currentConfig);
+	if (warning) ctx.ui.notify(warning, "warning");
+	const edited = await ctx.ui.editor("Codex UI config JSON", prefill);
+	if (edited === undefined) return;
+	try {
+		const normalized = normalizeCodexConfig(JSON.parse(edited), state.uiPrefs);
+		writeCodexConfig(normalized, path);
+		state.uiPrefs = normalized.ui;
+		pi.appendEntry(CODEX_UI_PREFS_ENTRY, state.uiPrefs);
+		if (state.enabled) applyCodexChrome(ctx, state.uiPrefs, () => pi.getThinkingLevel());
+		ctx.ui.notify("Codex UI config saved", "info");
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		ctx.ui.notify(`Codex UI config not saved: ${message}`, "error");
+	}
+}
+
+export function readCodexConfigEditorPrefill(path: string, currentConfig: CodexConfig): { text: string; warning?: string } {
+	const fallback = `${JSON.stringify(currentConfig, null, 2)}\n`;
+	try {
+		return { text: existsSync(path) ? readFileSync(path, "utf8") : fallback };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return { text: fallback, warning: `Codex UI config not read: ${message}` };
+	}
 }
 
 function rememberPreviousTheme(ctx: ExtensionContext, state: AdapterState): void {
