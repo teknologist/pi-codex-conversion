@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import { type ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
 import {
 	applyCodexChrome,
 	patchToolBackgroundAliases,
@@ -57,8 +57,22 @@ test("applyCodexChrome replaces editor by default", () => {
 test("patchToolBackgroundAliases maps pi-pretty aliases to pure black tool background", () => {
 	const theme = createTheme();
 
-	patchToolBackgroundAliases(theme as never);
+	patchToolBackgroundAliases(theme);
 
 	assert.equal(theme.getBgAnsi("toolBg"), "\u001b[48;2;0;0;0m");
 	assert.equal(theme.getBgAnsi("background"), "\u001b[48;2;0;0;0m");
+});
+
+test("patchToolBackgroundAliases patches real Theme instances for pi-pretty truecolor parsing", () => {
+	const theme = new Theme(
+		{ text: "#ffffff" } as never,
+		{ toolSuccessBg: "#000000" } as never,
+		"dark" as never,
+	);
+
+	patchToolBackgroundAliases(theme);
+
+	assert.equal(theme.getBgAnsi("toolBg" as never), "\u001b[48;2;0;0;0m");
+	assert.equal(theme.getBgAnsi("background" as never), "\u001b[48;2;0;0;0m");
+	assert.equal(theme.getBgAnsi("toolSuccessBg"), "\u001b[48;5;16m");
 });

@@ -1,4 +1,4 @@
-import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
+import { type ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import type { CodexUiConfig } from "./config.ts";
 import { CodexEditor } from "./editor.ts";
@@ -15,9 +15,11 @@ function fitVisible(text: string, width: number): string {
 	return truncated + " ".repeat(Math.max(0, width - visibleWidth(truncated)));
 }
 
+const TOOL_SURFACE_BG_ANSI = "\u001b[48;2;0;0;0m";
 const patchedThemes = new WeakSet<object>();
+let themePrototypePatched = false;
 
-interface ThemeWithBackgroundAliases extends Theme {
+interface ThemeWithBackgroundAliases {
 	getBgAnsi(color: string): string;
 }
 
@@ -25,14 +27,31 @@ function formatThinking(level: string | undefined): string {
 	return !level || level === "off" ? "standard" : level;
 }
 
-export function patchToolBackgroundAliases(theme: Theme): void {
+function isToolBackgroundAlias(color: string): boolean {
+	return color === "toolBg" || color === "background";
+}
+
+function patchThemePrototypeBackgroundAliases(): void {
+	if (themePrototypePatched) return;
+	const prototype = Theme.prototype as ThemeWithBackgroundAliases;
+	const originalGetBgAnsi = prototype.getBgAnsi;
+	prototype.getBgAnsi = function getBgAnsiWithToolAliases(
+		color: string,
+	): string {
+		if (isToolBackgroundAlias(color)) return TOOL_SURFACE_BG_ANSI;
+		return originalGetBgAnsi.call(this, color);
+	};
+	themePrototypePatched = true;
+}
+
+export function patchToolBackgroundAliases(
+	theme: ThemeWithBackgroundAliases,
+): void {
+	patchThemePrototypeBackgroundAliases();
 	if (patchedThemes.has(theme)) return;
-	const themeWithAliases = theme as ThemeWithBackgroundAliases;
-	const originalGetBgAnsi = themeWithAliases.getBgAnsi.bind(themeWithAliases);
-	themeWithAliases.getBgAnsi = (color: string) => {
-		if (color === "toolBg" || color === "background") {
-			return originalGetBgAnsi("toolSuccessBg");
-		}
+	const originalGetBgAnsi = theme.getBgAnsi.bind(theme);
+	theme.getBgAnsi = (color: string) => {
+		if (isToolBackgroundAlias(color)) return TOOL_SURFACE_BG_ANSI;
 		return originalGetBgAnsi(color);
 	};
 	patchedThemes.add(theme);
