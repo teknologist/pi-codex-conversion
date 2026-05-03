@@ -11,8 +11,8 @@
     "successGreen": "#849985",
     "errorRed": "#ad8585",
     "warningAmber": "#9d8b6c",
-    "surface": "#080a0d",
-    "surfaceAlt": "#0a0c10",
+    "surface": "#000000",
+    "surfaceAlt": "#000000",
     "surfaceMuted": "#0d1014",
     "surfaceUser": "#11151a",
     "surfaceCustom": "#0b0e12",
@@ -83,8 +83,8 @@
     "bashMode": "accentTeal"
   },
   "export": {
-    "pageBg": "#080a0d",
-    "cardBg": "#0b0e12",
+    "pageBg": "#000000",
+    "cardBg": "#000000",
     "infoBg": "#17140f"
   }
 }

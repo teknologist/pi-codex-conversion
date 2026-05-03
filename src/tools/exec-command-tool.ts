@@ -1,23 +1,55 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
-import { Container, Text } from "@mariozechner/pi-tui";
-import { renderExecCommandCall, renderExecResultMeta, renderGroupedExecCommandCall } from "./codex-rendering.ts";
+import { Box, Container, Text } from "@mariozechner/pi-tui";
+import {
+	renderExecCommandCall,
+	renderExecResultMeta,
+	renderGroupedExecCommandCall,
+} from "./codex-rendering.ts";
 import type { ExecCommandTracker } from "./exec-command-state.ts";
-import type { ExecSessionManager, UnifiedExecResult } from "./exec-session-manager.ts";
+import type {
+	ExecSessionManager,
+	UnifiedExecResult,
+} from "./exec-session-manager.ts";
 import { formatUnifiedExecResult } from "./unified-exec-format.ts";
 
 const EXEC_COMMAND_PARAMETERS = Type.Object({
 	cmd: Type.String({ description: "Shell command to execute." }),
-	workdir: Type.Optional(Type.String({ description: "Optional working directory; defaults to the current turn cwd." })),
-	shell: Type.Optional(Type.String({ description: "Optional shell binary; defaults to the user's shell." })),
-	tty: Type.Optional(
-		Type.Boolean({
-			description: "Whether to allocate a TTY for the command. Defaults to false (plain pipes); set to true to open a PTY and access TTY process.",
+	workdir: Type.Optional(
+		Type.String({
+			description:
+				"Optional working directory; defaults to the current turn cwd.",
 		}),
 	),
-	yield_time_ms: Type.Optional(Type.Number({ description: "How long to wait in milliseconds for output before yielding." })),
-	max_output_tokens: Type.Optional(Type.Number({ description: "Maximum number of tokens to return. Excess output will be truncated." })),
-	login: Type.Optional(Type.Boolean({ description: "Whether to run the shell with -l/-i semantics. Defaults to true." })),
+	shell: Type.Optional(
+		Type.String({
+			description: "Optional shell binary; defaults to the user's shell.",
+		}),
+	),
+	tty: Type.Optional(
+		Type.Boolean({
+			description:
+				"Whether to allocate a TTY for the command. Defaults to false (plain pipes); set to true to open a PTY and access TTY process.",
+		}),
+	),
+	yield_time_ms: Type.Optional(
+		Type.Number({
+			description:
+				"How long to wait in milliseconds for output before yielding.",
+		}),
+	),
+	max_output_tokens: Type.Optional(
+		Type.Number({
+			description:
+				"Maximum number of tokens to return. Excess output will be truncated.",
+		}),
+	),
+	login: Type.Optional(
+		Type.Boolean({
+			description:
+				"Whether to run the shell with -l/-i semantics. Defaults to true.",
+		}),
+	),
 });
 
 interface ExecCommandParams {
@@ -42,13 +74,31 @@ function parseExecCommandParams(params: unknown): ExecCommandParams {
 
 	return {
 		cmd,
-		workdir: "workdir" in params && typeof params.workdir === "string" ? params.workdir : undefined,
-		shell: "shell" in params && typeof params.shell === "string" ? params.shell : undefined,
-		tty: "tty" in params && typeof params.tty === "boolean" ? params.tty : undefined,
-		yield_time_ms: "yield_time_ms" in params && typeof params.yield_time_ms === "number" ? params.yield_time_ms : undefined,
+		workdir:
+			"workdir" in params && typeof params.workdir === "string"
+				? params.workdir
+				: undefined,
+		shell:
+			"shell" in params && typeof params.shell === "string"
+				? params.shell
+				: undefined,
+		tty:
+			"tty" in params && typeof params.tty === "boolean"
+				? params.tty
+				: undefined,
+		yield_time_ms:
+			"yield_time_ms" in params && typeof params.yield_time_ms === "number"
+				? params.yield_time_ms
+				: undefined,
 		max_output_tokens:
-			"max_output_tokens" in params && typeof params.max_output_tokens === "number" ? params.max_output_tokens : undefined,
-		login: "login" in params && typeof params.login === "boolean" ? params.login : undefined,
+			"max_output_tokens" in params &&
+			typeof params.max_output_tokens === "number"
+				? params.max_output_tokens
+				: undefined,
+		login:
+			"login" in params && typeof params.login === "boolean"
+				? params.login
+				: undefined,
 	};
 }
 
@@ -65,26 +115,52 @@ interface ExecCommandRenderContextLike {
 	invalidate?: () => void;
 }
 
+interface ToolSurfaceTheme {
+	bg?: (role: "toolSuccessBg", text: string) => string;
+}
+
+function renderToolSurface(text: string, theme: ToolSurfaceTheme) {
+	if (typeof theme.bg !== "function") {
+		return new Text(text, 0, 0);
+	}
+	const box = new Box(1, 1, (value) => theme.bg!("toolSuccessBg", value));
+	box.addChild(new Text(text, 0, 0));
+	return box;
+}
+
 const renderExecCommandCallWithOptionalContext: any = (
 	args: { cmd?: unknown },
-	theme: { fg(role: string, text: string): string; bold(text: string): string },
+	theme: {
+		fg(role: string, text: string): string;
+		bold(text: string): string;
+	} & ToolSurfaceTheme,
 	context: ExecCommandRenderContextLike | undefined,
 	tracker: ExecCommandTracker,
 ) => {
 	const command = typeof args.cmd === "string" ? args.cmd : "";
-	tracker.registerRenderContext(context?.toolCallId, context?.invalidate ?? (() => {}));
+	tracker.registerRenderContext(
+		context?.toolCallId,
+		context?.invalidate ?? (() => {}),
+	);
 	const renderInfo = tracker.getRenderInfo(context?.toolCallId, command);
 	if (renderInfo.hidden) {
 		return new Text("", 0, 0);
 	}
 	const text = renderInfo.actionGroups
-		? renderGroupedExecCommandCall(renderInfo.actionGroups, renderInfo.status, theme)
+		? renderGroupedExecCommandCall(
+				renderInfo.actionGroups,
+				renderInfo.status,
+				theme,
+			)
 		: renderExecCommandCall(command, renderInfo.status, theme);
-	return new Text(text, 0, 0);
+	return renderToolSurface(text, theme);
 };
 
 const renderExecCommandResultWithOptionalContext: any = (
-	result: { content: Array<{ type: string; text?: string }>; details?: unknown },
+	result: {
+		content: Array<{ type: string; text?: string }>;
+		details?: unknown;
+	},
 	options: { expanded: boolean; isPartial: boolean },
 	theme: { fg(role: string, text: string): string },
 	context: ExecCommandRenderContextLike | undefined,
@@ -94,25 +170,44 @@ const renderExecCommandResultWithOptionalContext: any = (
 		return createEmptyResultComponent();
 	}
 
-	const command = context && "args" in context && context.args && typeof (context as any).args.cmd === "string" ? (context as any).args.cmd : undefined;
+	const command =
+		context &&
+		"args" in context &&
+		context.args &&
+		typeof (context as any).args.cmd === "string"
+			? (context as any).args.cmd
+			: undefined;
 	if (tracker.getRenderInfo(context?.toolCallId, command ?? "").hidden) {
 		return createEmptyResultComponent();
 	}
 
-	const details = isUnifiedExecResult(result.details) ? result.details : undefined;
+	const details = isUnifiedExecResult(result.details)
+		? result.details
+		: undefined;
 	const content = result.content.find((item) => item.type === "text");
-	const output = details?.output ?? (content?.type === "text" ? content.text : "");
+	const output =
+		details?.output ?? (content?.type === "text" ? content.text : "");
 	const lines = [theme.fg("dim", output || "(no output)")];
-	lines.push(...renderExecResultMeta({ sessionId: details?.session_id, exitCode: details?.exit_code }, theme));
+	lines.push(
+		...renderExecResultMeta(
+			{ sessionId: details?.session_id, exitCode: details?.exit_code },
+			theme,
+		),
+	);
 	const text = lines.join("\n");
 	return new Text(text, 0, 0);
 };
 
-export function registerExecCommandTool(pi: ExtensionAPI, tracker: ExecCommandTracker, sessions: ExecSessionManager): void {
+export function registerExecCommandTool(
+	pi: ExtensionAPI,
+	tracker: ExecCommandTracker,
+	sessions: ExecSessionManager,
+): void {
 	pi.registerTool({
 		name: "exec_command",
 		label: "exec_command",
-		description: "Runs a command in a PTY, returning output or a session ID for ongoing interaction.",
+		description:
+			"Runs a command in a PTY, returning output or a session ID for ongoing interaction.",
 		promptSnippet: "Run a command.",
 		promptGuidelines: [
 			"Use exec_command for search, listing files, and local text-file reads.",
@@ -131,17 +226,44 @@ export function registerExecCommandTool(pi: ExtensionAPI, tracker: ExecCommandTr
 				tracker.recordPersistentSession(toolCallId, result.session_id);
 			}
 			return {
-				content: [{ type: "text", text: formatUnifiedExecResult(result, typedParams.cmd) }],
+				content: [
+					{
+						type: "text",
+						text: formatUnifiedExecResult(result, typedParams.cmd),
+					},
+				],
 				details: result,
 			};
 		},
-		renderCall: ((args: { cmd?: unknown }, theme: { fg(role: string, text: string): string; bold(text: string): string }, context?: ExecCommandRenderContextLike) =>
-			renderExecCommandCallWithOptionalContext(args, theme, context, tracker)) as any,
+		renderCall: ((
+			args: { cmd?: unknown },
+			theme: {
+				fg(role: string, text: string): string;
+				bold(text: string): string;
+			} & ToolSurfaceTheme,
+			context?: ExecCommandRenderContextLike,
+		) =>
+			renderExecCommandCallWithOptionalContext(
+				args,
+				theme,
+				context,
+				tracker,
+			)) as any,
 		renderResult: ((
-			result: { content: Array<{ type: string; text?: string }>; details?: unknown },
+			result: {
+				content: Array<{ type: string; text?: string }>;
+				details?: unknown;
+			},
 			options: { expanded: boolean; isPartial: boolean },
 			theme: { fg(role: string, text: string): string },
 			context?: ExecCommandRenderContextLike,
-		) => renderExecCommandResultWithOptionalContext(result, options, theme, context, tracker)) as any,
+		) =>
+			renderExecCommandResultWithOptionalContext(
+				result,
+				options,
+				theme,
+				context,
+				tracker,
+			)) as any,
 	});
 }
