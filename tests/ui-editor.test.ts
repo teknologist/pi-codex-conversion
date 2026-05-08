@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CustomEditor } from "@mariozechner/pi-coding-agent";
+import { CustomEditor } from "@earendil-works/pi-coding-agent";
 import { CodexEditor } from "../src/ui/editor.ts";
 
 function withMockedBaseRender(lines: string[], run: (editor: CodexEditor) => void): void {

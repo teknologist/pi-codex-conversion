@@ -1,5 +1,5 @@
-import { DynamicBorder, getSettingsListTheme, type Theme } from "@mariozechner/pi-coding-agent";
-import { Container, SettingsList, Text, type SettingItem } from "@mariozechner/pi-tui";
+import { DynamicBorder, getSettingsListTheme, type Theme } from "@earendil-works/pi-coding-agent";
+import { Container, SettingsList, Text, type SettingItem } from "@earendil-works/pi-tui";
 import type { CodexConfig } from "./config.ts";
 
 export type CodexUiConfigAction = { type: "close" } | { type: "edit-json" } | { type: "reset" };

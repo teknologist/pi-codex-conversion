@@ -1,6 +1,6 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { Box, Container, Text } from "@mariozechner/pi-tui";
+import { Box, Container, Text } from "@earendil-works/pi-tui";
 import {
 	renderExecResultMeta,
 	renderWriteStdinCall,

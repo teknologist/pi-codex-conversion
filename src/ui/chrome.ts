@@ -1,5 +1,5 @@
-import { type ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import { type ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { CodexUiConfig } from "./config.ts";
 import { CodexEditor } from "./editor.ts";
 import type { CodexUiPrefs } from "./prefs.ts";

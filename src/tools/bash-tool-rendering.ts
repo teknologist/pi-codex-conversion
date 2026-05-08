@@ -7,8 +7,8 @@ import {
 	SettingsManager,
 	type ToolDefinition,
 	type ToolRenderResultOptions,
-} from "@mariozechner/pi-coding-agent";
-import { Box, type Component, Text } from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-coding-agent";
+import { Box, type Component, Text } from "@earendil-works/pi-tui";
 
 interface RenderTheme {
 	fg(role: string, text: string): string;

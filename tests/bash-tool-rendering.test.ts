@@ -90,8 +90,9 @@ test("compact built-in renderers make bash, read, and write self-rendered", () =
 	const read = registered.find((tool) => tool.name === "read");
 	const write = registered.find((tool) => tool.name === "write");
 	const renderContext: any = {
-		args: {},
+		args: { path: "src/index.ts" },
 		argsComplete: true,
+		cwd: process.cwd(),
 		expanded: false,
 		isPartial: false,
 		state: {},
@@ -111,6 +112,7 @@ test("compact built-in renderers make bash, read, and write self-rendered", () =
 	);
 	renderContext.lastComponent = renderedReadCall;
 	assert.match(renderedReadCall.render(80)[0], /^<toolSuccessBg>/);
+	renderContext.args = { path: "tests/bash-tool-rendering.test.ts" };
 	assert.doesNotThrow(() =>
 		read.renderCall(
 			{ path: "tests/bash-tool-rendering.test.ts" },
@@ -118,6 +120,7 @@ test("compact built-in renderers make bash, read, and write self-rendered", () =
 			renderContext,
 		),
 	);
+	renderContext.args = { path: "tmp.txt", content: "hello" };
 	assert.match(
 		write
 			.renderCall(
