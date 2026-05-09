@@ -2,3 +2,7 @@ node_modules
 .DS_Store
 /.pi-lens
 /.pi
+.pi/semantic-grep.sqlite
+.pi/semantic-grep.sqlite-*
+.pi/openai-codex-images/
+vendor/apply-patch-src/target/

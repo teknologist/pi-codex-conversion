@@ -5,11 +5,11 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/IgorWarzocha/pi-codex-conversion.git"
+    "url": "git+https://github.com/teknologist/pi-codex-conversion.git"
   },
-  "homepage": "https://github.com/IgorWarzocha/pi-codex-conversion#readme",
+  "homepage": "https://github.com/teknologist/pi-codex-conversion#readme",
   "bugs": {
-    "url": "https://github.com/IgorWarzocha/pi-codex-conversion/issues"
+    "url": "https://github.com/teknologist/pi-codex-conversion/issues"
   },
   "keywords": [
     "pi-package",
@@ -21,10 +21,6 @@
     "apply-patch"
   ],
   "license": "MIT",
-  "os": [
-    "darwin",
-    "linux"
-  ],
   "pi": {
     "extensions": [
       "./src/index.ts"
@@ -37,6 +33,9 @@
     "src/**/*.ts",
     "src/**/*.md",
     "themes/**/*.json",
+    "bin/apply_patch",
+    "bin/apply_patch.cmd",
+    "vendor/apply-patch/**",
     "available-tools.png",
     "README.md",
     "LICENSE"
@@ -49,23 +48,35 @@
     "publish:dev": "npm publish --tag dev",
     "release:dev": "npm version prerelease --preid dev && npm publish --tag dev",
     "prepack": "npm run check",
-    "prepublishOnly": "npm run check"
+    "prepublishOnly": "npm run verify:apply-patch-binaries && npm run check",
+    "build:apply-patch": "node scripts/build-apply-patch-binary.mjs",
+    "sync:apply-patch-source": "node scripts/sync-apply-patch-source.mjs",
+    "verify:apply-patch-binaries": "node scripts/verify-apply-patch-binaries.mjs"
   },
   "publishConfig": {
     "access": "public"
   },
   "peerDependencies": {
+    "@earendil-works/pi-ai": "^0.74.0",
     "@earendil-works/pi-coding-agent": "^0.74.0",
     "@earendil-works/pi-tui": "^0.74.0",
-    "typebox": "^1.1.37"
+    "typebox": "^1.1.24"
   },
   "devDependencies": {
+    "@earendil-works/pi-ai": "^0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@earendil-works/pi-tui": "^0.74.0",
     "tsx": "^4.20.5",
+    "typebox": "^1.1.24",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "node-pty": "^1.1.0",
+    "partial-json": "^0.1.7",
     "tree-sitter-bash": "^0.25.1",
     "web-tree-sitter": "^0.26.7"
+  },
+  "bin": {
+    "apply_patch": "./bin/apply_patch"
   }
 }

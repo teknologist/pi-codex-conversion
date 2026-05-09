@@ -37,14 +37,6 @@ export function supportsNativeWebSearch(model: ExtensionContext["model"]): boole
 	return isOpenAICodexModel(model);
 }
 
-export function shouldShowWebSearchSessionNote(
-	model: ExtensionContext["model"],
-	hasUI: boolean,
-	alreadyShown: boolean,
-): boolean {
-	return hasUI && !alreadyShown && supportsNativeWebSearch(model);
-}
-
 export function supportsMultimodalNativeWebSearch(model: ExtensionContext["model"]): boolean {
 	if (!supportsNativeWebSearch(model)) {
 		return false;
@@ -107,6 +99,7 @@ export function createWebSearchTool(): ToolDefinition<typeof WEB_SEARCH_PARAMETE
 		promptSnippet:
 			"Search the web for sources relevant to the current task. Use it when you need up-to-date information, external references, or broader context beyond the workspace.",
 		parameters: WEB_SEARCH_PARAMETERS,
+		prepareArguments: () => ({}),
 		async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
 			if (!supportsNativeWebSearch(ctx.model)) {
 				throw new Error(WEB_SEARCH_UNSUPPORTED_MESSAGE);
@@ -129,6 +122,14 @@ export function createWebSearchTool(): ToolDefinition<typeof WEB_SEARCH_PARAMETE
 
 export function registerWebSearchTool(pi: ExtensionAPI): void {
 	pi.registerTool(createWebSearchTool());
+}
+
+export function shouldShowWebSearchSessionNote(
+	model: ExtensionContext["model"],
+	hasUI: boolean,
+	alreadyShown: boolean,
+): boolean {
+	return hasUI && !alreadyShown && supportsNativeWebSearch(model);
 }
 
 export function registerWebSearchSessionNoteRenderer(pi: ExtensionAPI): void {
