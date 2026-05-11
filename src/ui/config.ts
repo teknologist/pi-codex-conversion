@@ -13,6 +13,7 @@ export type CodexUiConfig = CodexUiPrefs & {
 
 export interface CodexToolsConfig {
 	enabled: CodexToolsMode;
+	registerAdapterTools: boolean;
 }
 
 export interface CodexPromptConfig {
@@ -41,6 +42,7 @@ export const DEFAULT_CODEX_CONFIG: CodexConfig = {
 	},
 	tools: {
 		enabled: "auto",
+		registerAdapterTools: true,
 	},
 	prompt: {
 		enabled: "auto",
@@ -79,6 +81,9 @@ export function normalizeCodexConfig(input: unknown, fallbackUi?: CodexUiPrefs):
 		},
 		tools: {
 			enabled: normalizeToolsMode(toolsSource.enabled),
+			registerAdapterTools: typeof (toolsSource as { registerAdapterTools?: unknown }).registerAdapterTools === "boolean"
+				? (toolsSource as { registerAdapterTools: boolean }).registerAdapterTools
+				: true,
 		},
 		prompt: {
 			enabled: normalizePromptMode(promptSource.enabled),
@@ -95,10 +100,11 @@ function hasInvalidCodexConfigFields(input: unknown): boolean {
 	const invalidUiMode = ui && "enabled" in ui && ui.enabled !== "auto" && ui.enabled !== "always" && ui.enabled !== "never";
 	const invalidToolsMode = tools && "enabled" in tools && tools.enabled !== "auto" && tools.enabled !== "never";
 	const invalidPromptMode = prompt && "enabled" in prompt && prompt.enabled !== "auto" && prompt.enabled !== "always" && prompt.enabled !== "never";
+	const invalidRegisterAdapterTools = tools && "registerAdapterTools" in tools && typeof tools.registerAdapterTools !== "boolean";
 	const invalidTheme = ui && "themeName" in ui && ui.themeName !== "Codex Dark" && ui.themeName !== "Codex Light";
 	const invalidDensity = ui && "density" in ui && ui.density !== "compact" && ui.density !== "comfortable";
 	const invalidBoolean = ["forceTheme", "showHeader", "compactTools", "promptPrefix"].some((key) => ui && key in ui && typeof ui[key] !== "boolean");
-	return Boolean(invalidUiMode || invalidToolsMode || invalidPromptMode || invalidTheme || invalidDensity || invalidBoolean);
+	return Boolean(invalidUiMode || invalidToolsMode || invalidPromptMode || invalidRegisterAdapterTools || invalidTheme || invalidDensity || invalidBoolean);
 }
 
 export function loadCodexConfig(fallbackUi: CodexUiPrefs = DEFAULT_CODEX_UI_PREFS, path = getCodexConfigPath()): LoadedCodexConfig {

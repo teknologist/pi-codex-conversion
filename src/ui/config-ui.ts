@@ -53,6 +53,7 @@ export class CodexUiConfigComponent extends Container {
 		return [
 			setting("ui.enabled", "UI: Mode", this.config.ui.enabled, ["auto", "always", "never"], "When Codex chrome/theme should be active."),
 			setting("tools.enabled", "Tools: Mode", this.config.tools.enabled, ["auto", "never"], "When Codex adapter tools should replace Pi tools."),
+			setting("tools.registerAdapterTools", "Tools: Register", boolValue(this.config.tools.registerAdapterTools), ["true", "false"], "Register this extension's adapter tools. Disable to avoid tool-name conflicts; reload after changing."),
 			setting("prompt.enabled", "Prompt: Mode", this.config.prompt.enabled, ["auto", "always", "never"], "When Codex system-prompt conversion should run."),
 			setting("themeName", "UI: Theme", this.config.ui.themeName, ["Codex Dark", "Codex Light"], "Bundled Codex theme variant."),
 			setting("forceTheme", "UI: Force theme", boolValue(this.config.ui.forceTheme), ["true", "false"], "Apply the selected Codex theme when UI chrome is active."),
@@ -79,7 +80,9 @@ export function applyConfigSetting(config: CodexConfig, id: string, value: strin
 		case "ui.enabled":
 			return value === "always" || value === "never" ? { ...config, ui: { ...config.ui, enabled: value } } : { ...config, ui: { ...config.ui, enabled: "auto" } };
 		case "tools.enabled":
-			return value === "never" ? { ...config, tools: { enabled: "never" } } : { ...config, tools: { enabled: "auto" } };
+			return value === "never" ? { ...config, tools: { ...config.tools, enabled: "never" } } : { ...config, tools: { ...config.tools, enabled: "auto" } };
+		case "tools.registerAdapterTools":
+			return { ...config, tools: { ...config.tools, registerAdapterTools: value === "true" } };
 		case "prompt.enabled":
 			return value === "always" || value === "never" ? { ...config, prompt: { enabled: value } } : { ...config, prompt: { enabled: "auto" } };
 		case "themeName":

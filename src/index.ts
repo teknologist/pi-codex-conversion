@@ -43,6 +43,7 @@ interface AdapterState {
 	promptSkills: PromptSkill[];
 	webSearchNoticeShown: boolean;
 	config: CodexConfig;
+	toolDefinitionsRegistered: boolean;
 	previousThemeNames: Map<string, string | null>;
 }
 
@@ -66,8 +67,8 @@ function isToolCallOnlyAssistantMessage(message: unknown): boolean {
 }
 
 export default function codexConversion(pi: ExtensionAPI) {
-	ensureBundledApplyPatchOnPath();
 	const tracker = createExecCommandTracker();
+	const initialConfig = loadCodexConfig().config;
 	const state: AdapterState = {
 		uiActive: false,
 		toolsActive: false,
@@ -75,7 +76,8 @@ export default function codexConversion(pi: ExtensionAPI) {
 		cwd: process.cwd(),
 		promptSkills: [],
 		webSearchNoticeShown: false,
-		config: DEFAULT_CODEX_CONFIG,
+		config: initialConfig,
+		toolDefinitionsRegistered: false,
 		previousThemeNames: new Map(),
 	};
 	const sessions = createExecSessionManager();
@@ -83,11 +85,9 @@ export default function codexConversion(pi: ExtensionAPI) {
 	registerOpenAICodexCustomProvider(pi, {
 		getCurrentCwd: () => state.cwd,
 	});
-	registerApplyPatchTool(pi);
-	registerExecCommandTool(pi, tracker, sessions);
-	registerWriteStdinTool(pi, sessions);
-	registerImageGenerationTool(pi);
-	registerWebSearchTool(pi);
+	if (state.config.tools.registerAdapterTools) {
+		registerAdapterToolDefinitions(pi, state, tracker, sessions);
+	}
 	registerWebSearchSessionNoteRenderer(pi);
 	registerCodexUiMessageRenderer(pi);
 	registerCodexUiCommands(pi, state);
@@ -154,7 +154,7 @@ export default function codexConversion(pi: ExtensionAPI) {
 
 	pi.on("before_provider_request", async (event, ctx) => {
 		state.cwd = ctx.cwd;
-		if (!shouldActivateTools(state.config.tools.enabled, isCodexLikeContext(ctx)) || !isOpenAICodexContext(ctx)) {
+		if (!shouldUseAdapterTools(state.config, isCodexLikeContext(ctx)) || !isOpenAICodexContext(ctx)) {
 			return undefined;
 		}
 		return rewriteNativeImageGenerationTool(rewriteNativeWebSearchTool(event.payload, ctx.model), ctx.model);
@@ -203,10 +203,13 @@ export default function codexConversion(pi: ExtensionAPI) {
 function syncAdapter(pi: ExtensionAPI, ctx: ExtensionContext, state: AdapterState, options: { editor?: boolean } = {}): void {
 	state.promptSkills = extractPiPromptSkills(ctx.getSystemPrompt());
 
-	registerViewImageTool(pi, { allowOriginalDetail: supportsOriginalImageDetail(ctx.model) });
+	if (state.config.tools.registerAdapterTools) {
+		registerAdapterToolDefinitions(pi, state);
+		registerViewImageTool(pi, { allowOriginalDetail: supportsOriginalImageDetail(ctx.model) });
+	}
 	const isCodexLike = isCodexLikeContext(ctx);
 	const uiActive = shouldActivateUi(state.config.ui.enabled, isCodexLike);
-	const toolsActive = shouldActivateTools(state.config.tools.enabled, isCodexLike);
+	const toolsActive = shouldUseAdapterTools(state.config, isCodexLike);
 	const promptActive = shouldActivatePrompt(state.config.prompt.enabled, isCodexLike);
 	registerCompactBuiltinToolRenderers(pi, ctx, uiActive && state.config.ui.compactTools);
 	if (toolsActive) maybeShowWebSearchSessionNote(pi, ctx, state);
@@ -225,6 +228,10 @@ export function shouldActivateUi(mode: CodexUiMode, isCodexLike: boolean): boole
 
 export function shouldActivateTools(mode: CodexToolsMode, isCodexLike: boolean): boolean {
 	return mode === "auto" && isCodexLike;
+}
+
+function shouldUseAdapterTools(config: CodexConfig, isCodexLike: boolean): boolean {
+	return config.tools.registerAdapterTools && shouldActivateTools(config.tools.enabled, isCodexLike);
 }
 
 export function shouldActivatePrompt(mode: CodexPromptMode, isCodexLike: boolean): boolean {
@@ -295,6 +302,23 @@ function getAdapterToolNames(ctx: ExtensionContext): string[] {
 		toolNames.push(VIEW_IMAGE_TOOL_NAME);
 	}
 	return toolNames;
+}
+
+function registerAdapterToolDefinitions(
+	pi: ExtensionAPI,
+	state: AdapterState,
+	tracker?: ReturnType<typeof createExecCommandTracker>,
+	sessions?: ReturnType<typeof createExecSessionManager>,
+): void {
+	if (state.toolDefinitionsRegistered) return;
+	if (!tracker || !sessions) return;
+	ensureBundledApplyPatchOnPath();
+	registerApplyPatchTool(pi);
+	registerExecCommandTool(pi, tracker, sessions);
+	registerWriteStdinTool(pi, sessions);
+	registerImageGenerationTool(pi);
+	registerWebSearchTool(pi);
+	state.toolDefinitionsRegistered = true;
 }
 
 export function mergeAdapterTools(activeTools: string[], adapterTools: string[]): string[] {

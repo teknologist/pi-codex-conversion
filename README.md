@@ -72,10 +72,12 @@ The config file is only created or updated by settings commands. Missing config 
     "compactTools": true,
     "promptPrefix": false
   },
-  "tools": { "enabled": "auto" },
+  "tools": { "enabled": "auto", "registerAdapterTools": true },
   "prompt": { "enabled": "auto" }
 }
 ```
+
+Set `tools.registerAdapterTools` to `false` when another installed extension should own the Codex-style tool names (`exec_command`, `write_stdin`, `apply_patch`, `image_generation`, `codex_web_search`, or `view_image`). This prevents this extension from registering or activating those tools. Reload Pi after changing it so startup-time tool registration uses the new value.
 
 For styling-only mode on any model while preserving normal Pi tools and prompts:
 
@@ -91,7 +93,7 @@ For styling-only mode on any model while preserving normal Pi tools and prompts:
     "compactTools": true,
     "promptPrefix": false
   },
-  "tools": { "enabled": "never" },
+  "tools": { "enabled": "never", "registerAdapterTools": true },
   "prompt": { "enabled": "never" }
 }
 ```
